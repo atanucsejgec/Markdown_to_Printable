@@ -33,6 +33,39 @@
     --transition: all 0.2s ease;
 }
 
+/* Dark Theme */
+[data-theme="dark"] {
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+    --primary-light: #1e293b;
+    --accent: #8b5cf6;
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #1a2332;
+    --border: #334155;
+    --border2: #475569;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.3), 0 4px 6px rgba(0,0,0,0.2);
+}
+
+[data-theme="dark"] .paper-preview {
+    background: #1a1a2e !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+}
+
+[data-theme="dark"] .markdown-textarea {
+    background: var(--surface);
+    color: var(--text);
+}
+
+[data-theme="dark"] .drop-message {
+    background: rgba(30,41,59,0.97);
+}
+
 html, body {
     height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -994,3 +1027,281 @@ html, body {
         display: none;
     }
 }
+
+/* ============================================
+   THEME TOGGLE BUTTON
+============================================ */
+.btn-theme {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+.btn-theme:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+    transform: rotate(20deg);
+}
+.theme-icon {
+    transition: transform 0.4s ease;
+}
+.btn-theme:hover .theme-icon {
+    transform: scale(1.15);
+}
+
+/* ============================================
+   MARKDOWN TOOLBAR
+============================================ */
+.md-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 8px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    min-height: 34px;
+}
+
+.tb-btn {
+    height: 26px;
+    min-width: 28px;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+.tb-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+.tb-btn:active {
+    transform: scale(0.93);
+}
+
+.tb-sep {
+    width: 1px;
+    height: 18px;
+    background: var(--border2);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   FIND & REPLACE BAR
+============================================ */
+.find-replace-bar {
+    background: var(--surface2);
+    border-bottom: 2px solid var(--primary);
+    padding: 6px 10px;
+    animation: frSlideDown 0.2s ease;
+}
+
+@keyframes frSlideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fr-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.fr-row:last-child { margin-bottom: 0; }
+
+.fr-input {
+    flex: 1;
+    height: 28px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 0 8px;
+    font-size: 12px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: var(--transition);
+}
+.fr-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+
+.fr-btn {
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.fr-btn:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.fr-replace-btn {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+.fr-count {
+    font-size: 11px;
+    color: var(--text3);
+    min-width: 32px;
+    text-align: center;
+    font-family: monospace;
+}
+
+.fr-case-label {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: var(--transition);
+    user-select: none;
+}
+.fr-case-label:hover {
+    background: var(--border);
+}
+.fr-case-label input {
+    width: 12px; height: 12px;
+    accent-color: var(--primary);
+}
+
+.fr-close {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+.fr-close:hover {
+    background: var(--danger);
+    color: white;
+}
+
+/* ============================================
+   WORD GOAL & READING TIME
+============================================ */
+.footer-sep {
+    color: var(--border2);
+    margin: 0 2px;
+}
+
+.word-goal-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.word-goal-label {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    font-size: 11px;
+}
+
+.word-goal-input {
+    width: 54px;
+    height: 18px;
+    border: 1px solid var(--border2);
+    border-radius: 3px;
+    font-size: 10px;
+    text-align: center;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    padding: 0 2px;
+}
+.word-goal-input:focus {
+    border-color: var(--primary);
+}
+.word-goal-input::-webkit-inner-spin-button,
+.word-goal-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.word-goal-input { -moz-appearance: textfield; }
+
+.word-goal-bar-wrap {
+    width: 48px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.word-goal-bar {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.3s ease, background 0.3s ease;
+}
+.word-goal-bar.complete {
+    background: var(--success);
+}
+
+.word-goal-pct {
+    font-size: 10px;
+    color: var(--text3);
+    min-width: 28px;
+    font-family: monospace;
+}
+
+/* ============================================
+   TOOL BUTTONS (TOC, Clear Saved)
+============================================ */
+.tool-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+}
+.tool-btn:hover {
+    background: var(--primary-light) !important;
+    color: var(--primary) !important;
+    border-color: var(--primary) !important;
+}
+
+/* ============================================
+   THEME TRANSITION
+============================================ */
+html[data-theme] * {
+    transition: background-color 0.3s ease, color 0.2s ease, border-color 0.3s ease;
+}

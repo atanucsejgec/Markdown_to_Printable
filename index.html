@@ -1,10 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MD to PDF/DOC Converter</title>
+    <meta name="description" content="Convert Markdown to beautifully formatted PDF, DOC, and HTML documents with live preview, syntax highlighting, and full customization.">
     <link rel="stylesheet" href="css/style.css">
+    <!-- Highlight.js theme (default: github) -->
+    <link rel="stylesheet" id="hljs-theme" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
 </head>
 <body>
 
@@ -20,6 +23,9 @@
     <div class="header-right">
         <button class="btn-outline" id="sampleBtn">Load Sample</button>
         <button class="btn-primary" id="clearBtn">Clear</button>
+        <button class="btn-theme" id="themeToggle" title="Toggle dark/light mode">
+            <span class="theme-icon" id="themeIcon">🌙</span>
+        </button>
     </div>
 </header>
 
@@ -36,7 +42,49 @@
                     <input type="file" id="fileInput" accept=".md,.txt,.readme" hidden>
                 </label>
                 <button class="btn-small" id="pasteBtn">📋 Paste</button>
+                <button class="btn-small" id="findReplaceToggle" title="Find & Replace (Ctrl+H)">🔍 Find</button>
             </div>
+        </div>
+
+        <!-- FIND & REPLACE BAR -->
+        <div class="find-replace-bar" id="findReplaceBar" style="display:none;">
+            <div class="fr-row">
+                <input type="text" id="findInput" class="fr-input" placeholder="Find...">
+                <button class="fr-btn" id="findPrev" title="Previous">◀</button>
+                <button class="fr-btn" id="findNext" title="Next">▶</button>
+                <span class="fr-count" id="findCount">0/0</span>
+                <label class="fr-case-label" title="Case sensitive">
+                    <input type="checkbox" id="findCaseSensitive">
+                    Aa
+                </label>
+                <button class="fr-close" id="findReplaceClose">✕</button>
+            </div>
+            <div class="fr-row">
+                <input type="text" id="replaceInput" class="fr-input" placeholder="Replace with...">
+                <button class="fr-btn fr-replace-btn" id="replaceOne">Replace</button>
+                <button class="fr-btn fr-replace-btn" id="replaceAll">All</button>
+            </div>
+        </div>
+
+        <!-- MARKDOWN TOOLBAR -->
+        <div class="md-toolbar" id="mdToolbar">
+            <button class="tb-btn" data-action="h1" title="Heading 1">H1</button>
+            <button class="tb-btn" data-action="h2" title="Heading 2">H2</button>
+            <button class="tb-btn" data-action="h3" title="Heading 3">H3</button>
+            <span class="tb-sep"></span>
+            <button class="tb-btn" data-action="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button class="tb-btn" data-action="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+            <button class="tb-btn" data-action="strikethrough" title="Strikethrough"><s>S</s></button>
+            <button class="tb-btn" data-action="code" title="Inline Code">&lt;/&gt;</button>
+            <span class="tb-sep"></span>
+            <button class="tb-btn" data-action="link" title="Link (Ctrl+K)">🔗</button>
+            <button class="tb-btn" data-action="image" title="Image">🖼️</button>
+            <button class="tb-btn" data-action="ul" title="Bullet List">• List</button>
+            <button class="tb-btn" data-action="ol" title="Numbered List">1. List</button>
+            <button class="tb-btn" data-action="quote" title="Blockquote">❝</button>
+            <button class="tb-btn" data-action="hr" title="Horizontal Rule">―</button>
+            <button class="tb-btn" data-action="table" title="Table">⊞</button>
+            <button class="tb-btn" data-action="codeblock" title="Code Block">```</button>
         </div>
 
         <!-- DRAG DROP ZONE -->
@@ -65,9 +113,22 @@ This is **bold** and *italic* text.
         </div>
 
         <div class="editor-footer">
-            <span id="charCount">0 characters</span>
+            <span id="charCount">0 chars</span>
             <span id="lineCount">0 lines</span>
             <span id="wordCount">0 words</span>
+            <span class="footer-sep">|</span>
+            <span id="readingTime">~0 min read</span>
+            <div class="word-goal-wrap" id="wordGoalWrap">
+                <span class="footer-sep">|</span>
+                <label class="word-goal-label" title="Set a word count goal">
+                    🎯
+                    <input type="number" id="wordGoalInput" class="word-goal-input" placeholder="Goal" min="0" step="50">
+                </label>
+                <div class="word-goal-bar-wrap" id="wordGoalBarWrap" style="display:none;">
+                    <div class="word-goal-bar" id="wordGoalBar"></div>
+                </div>
+                <span class="word-goal-pct" id="wordGoalPct"></span>
+            </div>
         </div>
     </div>
 
@@ -97,6 +158,16 @@ This is **bold** and *italic* text.
         </div>
 
         <div class="controls-body">
+
+            <!-- TOOLS -->
+            <div class="section-block">
+                <div class="section-title">Tools</div>
+
+                <div class="control-row">
+                    <button class="btn-small tool-btn" id="generateTOC">📑 Generate TOC</button>
+                    <button class="btn-small tool-btn" id="clearSavedData">🗑️ Clear Saved</button>
+                </div>
+            </div>
 
             <!-- APPEARANCE -->
             <div class="section-block">
@@ -348,6 +419,24 @@ This is **bold** and *italic* text.
 
             </div>
 
+            <!-- CODE THEME -->
+            <div class="section-block">
+                <div class="section-title">Code Highlighting</div>
+                <div class="control-row">
+                    <label class="control-label">Code Theme:</label>
+                    <select class="control-select" id="codeTheme">
+                        <option value="github">GitHub</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="dracula">Dracula</option>
+                        <option value="atom-one-dark">Atom One Dark</option>
+                        <option value="vs2015">VS 2015</option>
+                        <option value="stackoverflow-light">StackOverflow Light</option>
+                        <option value="tokyo-night-dark">Tokyo Night</option>
+                        <option value="nord">Nord</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- EXPORT FORMAT -->
             <div class="section-block">
                 <div class="section-title">Export Format</div>
@@ -398,6 +487,9 @@ This is **bold** and *italic* text.
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+
+<!-- Highlight.js for syntax highlighting -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

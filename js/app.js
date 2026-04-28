@@ -108,6 +108,21 @@ const DOM = {
 
     fontSizeRelative: $('fontSizeMode_relative'),
     fontSizeFixed:    $('fontSizeMode_fixed'),
+
+    // New feature refs
+    themeToggle:     $('themeToggle'),
+    themeIcon:       $('themeIcon'),
+    findReplaceBar:  $('findReplaceBar'),
+    findInput:       $('findInput'),
+    replaceInput:    $('replaceInput'),
+    findCount:       $('findCount'),
+    findCaseSensitive: $('findCaseSensitive'),
+    readingTime:     $('readingTime'),
+    wordGoalInput:   $('wordGoalInput'),
+    wordGoalBarWrap: $('wordGoalBarWrap'),
+    wordGoalBar:     $('wordGoalBar'),
+    wordGoalPct:     $('wordGoalPct'),
+    codeTheme:       $('codeTheme'),
 };
 
 // ─── MARKED CONFIG ───────────────────────────────────────────────────────────
@@ -133,10 +148,13 @@ function renderMath(element) {
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function init() {
+    loadTheme();
+    restoreSession();
     bindEvents();
     updateSizeDisplays();
     applyPreviewStyles();
     updatePreview();
+    updateStats();
 }
 
 // ─── BIND EVENTS ─────────────────────────────────────────────────────────────
@@ -344,6 +362,55 @@ function bindEvents() {
     // ── Download & Print ──
     $('downloadBtn').addEventListener('click', handleDownload);
     $('printBtn').addEventListener('click', handlePrint);
+
+    // ── Theme Toggle ──
+    DOM.themeToggle.addEventListener('click', toggleTheme);
+
+    // ── Markdown Toolbar ──
+    document.querySelectorAll('.tb-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleToolbarAction(btn.dataset.action));
+    });
+
+    // ── Keyboard shortcuts ──
+    DOM.markdownInput.addEventListener('keydown', handleEditorShortcuts);
+
+    // ── Find & Replace ──
+    $('findReplaceToggle').addEventListener('click', toggleFindReplace);
+    $('findReplaceClose').addEventListener('click', () => { DOM.findReplaceBar.style.display = 'none'; });
+    $('findNext').addEventListener('click', () => findInText('next'));
+    $('findPrev').addEventListener('click', () => findInText('prev'));
+    $('replaceOne').addEventListener('click', replaceInText);
+    $('replaceAll').addEventListener('click', replaceAllInText);
+    DOM.findInput.addEventListener('input', () => findInText('next'));
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'h') { e.preventDefault(); toggleFindReplace(); }
+    });
+
+    // ── TOC Generator ──
+    $('generateTOC').addEventListener('click', generateTOC);
+
+    // ── Clear Saved Data ──
+    $('clearSavedData').addEventListener('click', () => {
+        localStorage.removeItem('mdconvert_content');
+        localStorage.removeItem('mdconvert_settings');
+        localStorage.removeItem('mdconvert_wordgoal');
+        showToast('Saved data cleared!', 'success');
+    });
+
+    // ── Auto-save (debounced) ──
+    setInterval(autoSave, 2000);
+
+    // ── Word Goal ──
+    DOM.wordGoalInput.addEventListener('input', updateWordGoal);
+    const savedGoal = localStorage.getItem('mdconvert_wordgoal');
+    if (savedGoal) { DOM.wordGoalInput.value = savedGoal; updateWordGoal(); }
+
+    // ── Code Theme ──
+    DOM.codeTheme.addEventListener('change', () => {
+        const theme = DOM.codeTheme.value;
+        document.getElementById('hljs-theme').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
+        updatePreview();
+    });
 }
 
 // ─── HELPER: Bind number input with +/- buttons ───────────────────────────
@@ -381,9 +448,15 @@ function readFile(file) {
 // ─── STATS ───────────────────────────────────────────────────────────────────
 function updateStats() {
     const txt = STATE.markdown;
+    const wordCnt = txt.trim() ? txt.trim().split(/\s+/).length : 0;
     DOM.charCount.textContent = `${txt.length} chars`;
     DOM.lineCount.textContent = `${txt.split('\n').length} lines`;
-    DOM.wordCount.textContent = `${txt.trim() ? txt.trim().split(/\s+/).length : 0} words`;
+    DOM.wordCount.textContent = `${wordCnt} words`;
+    // Reading time (~200 WPM)
+    const mins = Math.max(1, Math.ceil(wordCnt / 200));
+    DOM.readingTime.textContent = `~${wordCnt === 0 ? 0 : mins} min read`;
+    // Word goal
+    updateWordGoal();
 }
 
 // ─── DEBOUNCE PREVIEW ────────────────────────────────────────────────────────
@@ -403,6 +476,12 @@ function updatePreview() {
     try {
         DOM.previewContent.innerHTML = marked.parse(md);
         renderMath(DOM.previewContent);
+        // Syntax highlighting
+        if (typeof hljs !== 'undefined') {
+            DOM.previewContent.querySelectorAll('pre code').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        }
     } catch(e) {
         DOM.previewContent.innerHTML = `<p style="color:red">Parse error: ${e.message}</p>`;
     }
@@ -1419,6 +1498,255 @@ API: api.indiapost.gov.in/tracking/v2
     updateStats();
     updatePreview();
     showToast('Sample loaded!', 'success');
+}
+
+// ─── THEME ───────────────────────────────────────────────────────────────────
+function loadTheme() {
+    const saved = localStorage.getItem('mdconvert_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    DOM.themeIcon.textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+
+function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    DOM.themeIcon.textContent = next === 'dark' ? '☀️' : '🌙';
+    localStorage.setItem('mdconvert_theme', next);
+    showToast(`${next === 'dark' ? '🌙 Dark' : '☀️ Light'} mode`, 'success');
+}
+
+// ─── MARKDOWN TOOLBAR ────────────────────────────────────────────────────────
+function handleToolbarAction(action) {
+    const ta = DOM.markdownInput;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    let before = '', after = '', insert = '';
+
+    switch(action) {
+        case 'h1': before = '# '; insert = sel || 'Heading 1'; break;
+        case 'h2': before = '## '; insert = sel || 'Heading 2'; break;
+        case 'h3': before = '### '; insert = sel || 'Heading 3'; break;
+        case 'bold': before = '**'; after = '**'; insert = sel || 'bold text'; break;
+        case 'italic': before = '*'; after = '*'; insert = sel || 'italic text'; break;
+        case 'strikethrough': before = '~~'; after = '~~'; insert = sel || 'strikethrough'; break;
+        case 'code': before = '`'; after = '`'; insert = sel || 'code'; break;
+        case 'link': before = '['; after = '](url)'; insert = sel || 'link text'; break;
+        case 'image': before = '!['; after = '](url)'; insert = sel || 'alt text'; break;
+        case 'ul': before = '- '; insert = sel || 'list item'; break;
+        case 'ol': before = '1. '; insert = sel || 'list item'; break;
+        case 'quote': before = '> '; insert = sel || 'blockquote'; break;
+        case 'hr': insert = '\n---\n'; break;
+        case 'table':
+            insert = '| Header | Header |\n|--------|--------|\n| Cell   | Cell   |';
+            break;
+        case 'codeblock':
+            before = '```\n'; after = '\n```'; insert = sel || 'code here';
+            break;
+        default: return;
+    }
+
+    const replacement = before + insert + after;
+    ta.setRangeText(replacement, start, end, 'end');
+    STATE.markdown = ta.value;
+    updateStats();
+    if (STATE.previewEnabled) debouncePreview();
+    ta.focus();
+}
+
+function handleEditorShortcuts(e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    switch(e.key.toLowerCase()) {
+        case 'b': e.preventDefault(); handleToolbarAction('bold'); break;
+        case 'i': e.preventDefault(); handleToolbarAction('italic'); break;
+        case 'k': e.preventDefault(); handleToolbarAction('link'); break;
+    }
+}
+
+// ─── FIND & REPLACE ──────────────────────────────────────────────────────────
+let findMatches = [];
+let findIndex = -1;
+
+function toggleFindReplace() {
+    const bar = DOM.findReplaceBar;
+    if (bar.style.display === 'none') {
+        bar.style.display = '';
+        DOM.findInput.focus();
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function findInText(dir) {
+    const query = DOM.findInput.value;
+    if (!query) { DOM.findCount.textContent = '0/0'; findMatches = []; return; }
+
+    const text = DOM.markdownInput.value;
+    const caseSensitive = DOM.findCaseSensitive.checked;
+    const searchText = caseSensitive ? text : text.toLowerCase();
+    const searchQuery = caseSensitive ? query : query.toLowerCase();
+
+    findMatches = [];
+    let idx = searchText.indexOf(searchQuery);
+    while (idx !== -1) {
+        findMatches.push(idx);
+        idx = searchText.indexOf(searchQuery, idx + 1);
+    }
+
+    if (findMatches.length === 0) {
+        DOM.findCount.textContent = '0/0';
+        findIndex = -1;
+        return;
+    }
+
+    if (dir === 'next') {
+        findIndex = (findIndex + 1) % findMatches.length;
+    } else {
+        findIndex = (findIndex - 1 + findMatches.length) % findMatches.length;
+    }
+
+    const pos = findMatches[findIndex];
+    DOM.markdownInput.focus();
+    DOM.markdownInput.setSelectionRange(pos, pos + query.length);
+    DOM.findCount.textContent = `${findIndex + 1}/${findMatches.length}`;
+}
+
+function replaceInText() {
+    if (findMatches.length === 0 || findIndex < 0) return;
+    const q = DOM.findInput.value;
+    const r = DOM.replaceInput.value;
+    const pos = findMatches[findIndex];
+    DOM.markdownInput.setRangeText(r, pos, pos + q.length, 'end');
+    STATE.markdown = DOM.markdownInput.value;
+    updateStats();
+    if (STATE.previewEnabled) debouncePreview();
+    findInText('next');
+}
+
+function replaceAllInText() {
+    const q = DOM.findInput.value;
+    const r = DOM.replaceInput.value;
+    if (!q) return;
+    const caseSensitive = DOM.findCaseSensitive.checked;
+    const flags = caseSensitive ? 'g' : 'gi';
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    DOM.markdownInput.value = DOM.markdownInput.value.replace(new RegExp(escaped, flags), r);
+    STATE.markdown = DOM.markdownInput.value;
+    updateStats();
+    if (STATE.previewEnabled) debouncePreview();
+    findMatches = [];
+    findIndex = -1;
+    DOM.findCount.textContent = '0/0';
+    showToast('All replaced!', 'success');
+}
+
+// ─── TABLE OF CONTENTS ───────────────────────────────────────────────────────
+function generateTOC() {
+    const md = STATE.markdown;
+    if (!md.trim()) { showToast('No content to generate TOC from', 'warning'); return; }
+
+    const lines = md.split('\n');
+    const tocLines = ['## Table of Contents', ''];
+    let inCodeBlock = false;
+
+    for (const line of lines) {
+        if (line.trim().startsWith('```')) { inCodeBlock = !inCodeBlock; continue; }
+        if (inCodeBlock) continue;
+        const match = line.match(/^(#{1,6})\s+(.+)/);
+        if (match) {
+            const level = match[1].length;
+            const text = match[2].trim();
+            const anchor = text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+            const indent = '  '.repeat(level - 1);
+            tocLines.push(`${indent}- [${text}](#${anchor})`);
+        }
+    }
+
+    if (tocLines.length <= 2) { showToast('No headings found', 'warning'); return; }
+
+    const toc = tocLines.join('\n') + '\n\n';
+    const ta = DOM.markdownInput;
+    const pos = ta.selectionStart;
+    ta.setRangeText(toc, pos, pos, 'end');
+    STATE.markdown = ta.value;
+    updateStats();
+    updatePreview();
+    showToast('TOC inserted!', 'success');
+}
+
+// ─── AUTO-SAVE & SESSION RESTORE ─────────────────────────────────────────────
+function autoSave() {
+    if (STATE.markdown) {
+        localStorage.setItem('mdconvert_content', STATE.markdown);
+    }
+    localStorage.setItem('mdconvert_settings', JSON.stringify(STATE.settings));
+}
+
+function restoreSession() {
+    const savedContent = localStorage.getItem('mdconvert_content');
+    const savedSettings = localStorage.getItem('mdconvert_settings');
+
+    if (savedContent) {
+        DOM.markdownInput.value = savedContent;
+        STATE.markdown = savedContent;
+    }
+
+    if (savedSettings) {
+        try {
+            const s = JSON.parse(savedSettings);
+            Object.assign(STATE.settings, s);
+            // Sync UI with restored settings
+            DOM.fontFamily.value = s.fontFamily || 'Helvetica, Arial, sans-serif';
+            DOM.bgColor.value = s.bgColor || '#ffffff';
+            DOM.bgColorHex.textContent = s.bgColor || '#ffffff';
+            DOM.textColor.value = s.textColor || '#000000';
+            DOM.textColorHex.textContent = s.textColor || '#000000';
+            DOM.linkColor.value = s.linkColor || '#0000EE';
+            DOM.linkColorHex.textContent = s.linkColor || '#0000EE';
+            DOM.sizeMode.value = s.sizeMode || 'relative';
+            DOM.baseSize.value = s.baseSize || 10;
+            DOM.lineHeight.value = s.lineHeight || 1.0;
+            DOM.headingGap.value = s.headingGap ?? 2;
+            DOM.paraGap.value = s.paraGap ?? 2;
+            DOM.listGap.value = s.listGap ?? 1;
+            DOM.zeroSpace.checked = s.zeroSpace !== false;
+            DOM.columns.value = s.columns || 1;
+            DOM.paperSize.value = s.paperSize || 'A4';
+            if (s.orientation === 'landscape') DOM.orientLandscape.checked = true;
+            else DOM.orientPortrait.checked = true;
+            if (s.margins) {
+                DOM.marginTop.value = s.margins.top ?? 1;
+                DOM.marginBot.value = s.margins.bot ?? 1;
+                DOM.marginLeft.value = s.margins.left ?? 1;
+                DOM.marginRight.value = s.margins.right ?? 1;
+            }
+            DOM.fontSizeRelative.style.display = s.sizeMode === 'fixed' ? 'none' : '';
+            DOM.fontSizeFixed.style.display = s.sizeMode === 'fixed' ? '' : 'none';
+        } catch(e) { /* ignore parse errors */ }
+    }
+
+    if (savedContent) {
+        showToast('Session restored!', 'success');
+    }
+}
+
+// ─── WORD GOAL ───────────────────────────────────────────────────────────────
+function updateWordGoal() {
+    const goal = parseInt(DOM.wordGoalInput.value) || 0;
+    if (goal > 0) {
+        localStorage.setItem('mdconvert_wordgoal', goal);
+        const txt = STATE.markdown;
+        const words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+        const pct = Math.min(100, Math.round((words / goal) * 100));
+        DOM.wordGoalBarWrap.style.display = '';
+        DOM.wordGoalBar.style.width = pct + '%';
+        DOM.wordGoalBar.classList.toggle('complete', pct >= 100);
+        DOM.wordGoalPct.textContent = pct + '%';
+    } else {
+        DOM.wordGoalBarWrap.style.display = 'none';
+        DOM.wordGoalPct.textContent = '';
+    }
 }
 
 // ─── START ────────────────────────────────────────────────────────────────────
