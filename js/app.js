@@ -842,9 +842,11 @@ async function handleDownload() {
     }
 }
 
-// ─── PDF DOWNLOAD (FIXED) ─────────────────────────────────────────────────────
+// ─── PDF DOWNLOAD ─────────────────────────────────────────────────────────────
 async function downloadPDF() {
     showProgress('Generating PDF...', 10);
+
+    let iframe = null;
 
     try {
         if (!STATE.markdown.trim()) {
@@ -875,56 +877,123 @@ async function downloadPDF() {
         const hGap  = s.zeroSpace ? 0 : s.headingGap;
         const pGap  = s.zeroSpace ? 0 : s.paraGap;
         const lGap  = s.zeroSpace ? 0 : s.listGap;
-        const p2px  = pt => `${(pt * 1.3333).toFixed(2)}px`;
 
         updateProgress(15, 'Building render layer...');
 
-        // ── STEP 1: Create render container directly on body ──
-        const renderDiv = document.createElement('div');
-        renderDiv.className = 'pdfRenderContent';
-        renderDiv.style.cssText = `
+        // ── STEP 1: Render markdown to HTML with math ──
+        const htmlContent = marked.parse(STATE.markdown);
+
+        // Render math using a temp div in the main document
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+        tempDiv.innerHTML = htmlContent;
+        document.body.appendChild(tempDiv);
+        renderMath(tempDiv);
+        const renderedHTML = tempDiv.innerHTML;
+        document.body.removeChild(tempDiv);
+
+        // ── STEP 2: Build complete HTML for the iframe ──
+        // Collect all KaTeX inline styles (the rendered spans use inline styles)
+        let katexCSSLink = '';
+        try {
+            for (const sheet of document.styleSheets) {
+                if (sheet.href && sheet.href.includes('katex')) {
+                    katexCSSLink = `<link rel="stylesheet" href="${sheet.href}">`;
+                    break;
+                }
+            }
+        } catch(e) { /* ignore */ }
+
+        const iframeHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+${katexCSSLink}
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    width: ${contentWpx}px;
+    background: ${s.bgColor};
+    color: ${s.textColor};
+    font-family: ${s.fontFamily};
+    font-size: ${(sz.body * 1.3333).toFixed(2)}px;
+    line-height: ${s.lineHeight};
+    overflow: visible;
+}
+h1 { font-size: ${(sz.h1 * 1.3333).toFixed(2)}px; font-weight: 700; margin: ${hGap}px 0; line-height: ${s.lineHeight}; color: ${s.textColor}; }
+h2 { font-size: ${(sz.h2 * 1.3333).toFixed(2)}px; font-weight: 700; margin: ${hGap}px 0; line-height: ${s.lineHeight}; color: ${s.textColor}; }
+h3 { font-size: ${(sz.h3 * 1.3333).toFixed(2)}px; font-weight: 700; margin: ${hGap}px 0; line-height: ${s.lineHeight}; color: ${s.textColor}; }
+h4 { font-size: ${(sz.h4 * 1.3333).toFixed(2)}px; font-weight: 700; margin: ${hGap}px 0; line-height: ${s.lineHeight}; color: ${s.textColor}; }
+h5, h6 { font-size: ${(sz.body * 1.3333).toFixed(2)}px; font-weight: 700; margin: ${hGap}px 0; line-height: ${s.lineHeight}; color: ${s.textColor}; }
+p { margin: ${pGap}px 0; line-height: ${s.lineHeight}; font-size: ${(sz.body * 1.3333).toFixed(2)}px; }
+ul, ol { margin: ${lGap}px 0; padding-left: 1.5em; }
+li { margin: ${lGap}px 0; line-height: ${s.lineHeight}; font-size: ${(sz.body * 1.3333).toFixed(2)}px; }
+code { font-size: ${(sz.code * 1.3333).toFixed(2)}px; font-family: 'Courier New', monospace; background: rgba(0,0,0,0.07); padding: 1px 3px; }
+pre { font-size: ${(sz.code * 1.3333).toFixed(2)}px; font-family: 'Courier New', monospace; background: rgba(0,0,0,0.07); padding: ${pGap + 4}px 8px; margin: ${pGap}px 0; white-space: pre-wrap; word-wrap: break-word; line-height: ${s.lineHeight}; }
+pre code { background: none; padding: 0; }
+blockquote { margin: ${pGap}px 0; padding: ${pGap}px 10px; border-left: 3px solid ${s.textColor}55; color: ${s.textColor}99; }
+a { color: ${s.linkColor}; }
+table { border-collapse: collapse; width: 100%; margin: ${pGap}px 0; font-size: ${(sz.body * 1.3333).toFixed(2)}px; }
+th, td { border: 1px solid ${s.textColor}33; padding: 3px 6px; text-align: left; }
+th { background: ${s.textColor}11; font-weight: 700; }
+hr { border: none; border-top: 1px solid ${s.textColor}33; margin: ${pGap * 2}px 0; }
+img { max-width: 100%; }
+strong { font-weight: 700; }
+em { font-style: italic; }
+${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
+</style>
+</head>
+<body>${renderedHTML}</body>
+</html>`;
+
+        // ── STEP 3: Create iframe and write content ──
+        iframe = document.createElement('iframe');
+        iframe.style.cssText = `
             position: fixed;
-            top: 0;
             left: 0;
+            top: 0;
             width: ${contentWpx}px;
-            background: ${s.bgColor};
-            color: ${s.textColor};
-            font-family: ${s.fontFamily};
-            font-size: ${p2px(sz.body)};
-            line-height: ${s.lineHeight};
-            padding: 0;
-            margin: 0;
-            box-sizing: border-box;
-            overflow: visible;
-            z-index: -1;
+            height: ${pageHpx}px;
+            border: none;
+            z-index: -9999;
+            opacity: 0;
             pointer-events: none;
         `;
+        document.body.appendChild(iframe);
 
-        renderDiv.innerHTML = marked.parse(STATE.markdown);
-        document.body.appendChild(renderDiv);
-        renderMath(renderDiv);
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(iframeHTML);
+        iframeDoc.close();
 
-        // ── STEP 2: Inject styles scoped to renderDiv ──
-        const style = document.createElement('style');
-        style.id = '__pdfStyle';
-        style.textContent = buildRenderStyles(sz, s, hGap, pGap, lGap, p2px);
-        document.head.appendChild(style);
-
-        // ── STEP 3: Wait for full layout + KaTeX font loading ──
+        // ── STEP 4: Wait for iframe content + fonts to load ──
+        await new Promise(r => setTimeout(r, 800));
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        // Wait for KaTeX fonts to finish loading
-        if (document.fonts && document.fonts.ready) {
-            await document.fonts.ready;
-        }
-        await new Promise(r => setTimeout(r, 500));
+        // Wait for fonts inside iframe
+        try {
+            if (iframe.contentDocument.fonts && iframe.contentDocument.fonts.ready) {
+                await iframe.contentDocument.fonts.ready;
+            }
+        } catch(e) { /* ignore */ }
+        await new Promise(r => setTimeout(r, 300));
 
-        const totalH   = renderDiv.scrollHeight;
+        updateProgress(20, 'Measuring content...');
+
+        const iframeBody = iframeDoc.body;
+        // Resize iframe to full content height
+        const totalH = iframeBody.scrollHeight;
+        iframe.style.height = totalH + 'px';
+
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        await new Promise(r => setTimeout(r, 200));
+
         const totalPages = Math.max(1, Math.ceil(totalH / availableHpx));
 
         updateProgress(25, `Rendering ${totalPages} page(s)...`);
 
-        // ── STEP 4: Capture full content as ONE canvas ──
-        const fullCanvas = await html2canvas(renderDiv, {
+        // ── STEP 5: Capture full content as ONE canvas using html2canvas ──
+        // html2canvas works on the iframe body which is a proper document element
+        const fullCanvas = await html2canvas(iframeBody, {
             scale           : SCALE,
             useCORS         : true,
             allowTaint      : true,
@@ -934,33 +1003,14 @@ async function downloadPDF() {
             height          : totalH,
             windowWidth     : contentWpx,
             windowHeight    : totalH,
-            x               : 0,
-            y               : 0,
-            scrollX         : 0,
-            scrollY         : 0,
             foreignObjectRendering : false,
-            removeContainer : true,
-            onclone         : (clonedDoc) => {
-                // Copy all KaTeX stylesheets into the cloned document
-                const katexLinks = document.querySelectorAll('link[href*="katex"]');
-                katexLinks.forEach(link => {
-                    const clonedLink = clonedDoc.createElement('link');
-                    clonedLink.rel = 'stylesheet';
-                    clonedLink.href = link.href;
-                    clonedDoc.head.appendChild(clonedLink);
-                });
-                // Also copy the PDF render styles
-                const pdfStyle = clonedDoc.createElement('style');
-                pdfStyle.textContent = buildRenderStyles(sz, s, hGap, pGap, lGap, p2px);
-                clonedDoc.head.appendChild(pdfStyle);
-            }
         });
 
         updateProgress(60, 'Slicing pages...');
 
-        // ── STEP 6: Cleanup DOM ──
-        document.body.removeChild(overlay);
-        document.head.removeChild(style);
+        // ── STEP 6: Remove iframe ──
+        document.body.removeChild(iframe);
+        iframe = null;
 
         // ── STEP 7: Create PDF ──
         const { jsPDF } = window.jspdf;
@@ -1031,9 +1081,10 @@ async function downloadPDF() {
 
     } catch (err) {
         // Safe cleanup
-        const ov = document.querySelector('div[style*="z-index: -1"]');
+        if (iframe && iframe.parentNode) {
+            document.body.removeChild(iframe);
+        }
         const st = document.getElementById('__pdfStyle');
-        if (ov) document.body.removeChild(ov);
         if (st) document.head.removeChild(st);
         hideProgress();
         showToast('PDF Error: ' + err.message, 'error');
