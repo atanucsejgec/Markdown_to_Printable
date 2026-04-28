@@ -116,6 +116,21 @@ marked.setOptions({
     gfm: true,
 });
 
+// ─── MATH RENDERING (KaTeX) ─────────────────────────────────────────────────
+function renderMath(element) {
+    if (typeof renderMathInElement === 'function') {
+        renderMathInElement(element, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$', right: '$', display: false },
+                { left: '\\(', right: '\\)', display: false },
+                { left: '\\[', right: '\\]', display: true },
+            ],
+            throwOnError: false,
+        });
+    }
+}
+
 // ─── INIT ────────────────────────────────────────────────────────────────────
 function init() {
     bindEvents();
@@ -387,6 +402,7 @@ function updatePreview() {
     }
     try {
         DOM.previewContent.innerHTML = marked.parse(md);
+        renderMath(DOM.previewContent);
     } catch(e) {
         DOM.previewContent.innerHTML = `<p style="color:red">Parse error: ${e.message}</p>`;
     }
@@ -676,11 +692,29 @@ function buildPrintHTML() {
 
     const htmlContent = marked.parse(STATE.markdown || '');
 
+    // Build a temporary container to render math, then extract HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlContent;
+    renderMath(tempDiv);
+    const renderedContent = tempDiv.innerHTML;
+
+    // Collect KaTeX CSS for self-contained export
+    let katexCSS = '';
+    try {
+        for (const sheet of document.styleSheets) {
+            if (sheet.href && sheet.href.includes('katex')) {
+                katexCSS = `<link rel="stylesheet" href="${sheet.href}">`;
+                break;
+            }
+        }
+    } catch(e) { /* ignore cross-origin errors */ }
+
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
 <title>Document</title>
+${katexCSS}
 <style>
 @page {
     size: ${paperW}mm ${paperH}mm;
@@ -790,7 +824,7 @@ strong { font-weight: 700; }
 em { font-style: italic; }
 </style>
 </head>
-<body>${htmlContent}</body>
+<body>${renderedContent}</body>
 </html>`;
 }
 
@@ -845,24 +879,11 @@ async function downloadPDF() {
 
         updateProgress(15, 'Building render layer...');
 
-        // ── STEP 1: Create a VISIBLE wrapper that covers page but is behind UI ──
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #ffffff;
-            z-index: -1;
-            overflow: hidden;
-            pointer-events: none;
-        `;
-
-        // ── STEP 2: The actual render div inside overlay ──
+        // ── STEP 1: Create render container directly on body ──
         const renderDiv = document.createElement('div');
+        renderDiv.className = 'pdfRenderContent';
         renderDiv.style.cssText = `
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: ${contentWpx}px;
@@ -875,28 +896,34 @@ async function downloadPDF() {
             margin: 0;
             box-sizing: border-box;
             overflow: visible;
+            z-index: -1;
+            pointer-events: none;
         `;
 
         renderDiv.innerHTML = marked.parse(STATE.markdown);
-        overlay.appendChild(renderDiv);
-        document.body.appendChild(overlay);
+        document.body.appendChild(renderDiv);
+        renderMath(renderDiv);
 
-        // ── STEP 3: Inject styles scoped to renderDiv ──
+        // ── STEP 2: Inject styles scoped to renderDiv ──
         const style = document.createElement('style');
         style.id = '__pdfStyle';
         style.textContent = buildRenderStyles(sz, s, hGap, pGap, lGap, p2px);
         document.head.appendChild(style);
 
-        // ── STEP 4: Wait for full layout ──
+        // ── STEP 3: Wait for full layout + KaTeX font loading ──
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-        await new Promise(r => setTimeout(r, 300));
+        // Wait for KaTeX fonts to finish loading
+        if (document.fonts && document.fonts.ready) {
+            await document.fonts.ready;
+        }
+        await new Promise(r => setTimeout(r, 500));
 
         const totalH   = renderDiv.scrollHeight;
         const totalPages = Math.max(1, Math.ceil(totalH / availableHpx));
 
         updateProgress(25, `Rendering ${totalPages} page(s)...`);
 
-        // ── STEP 5: Capture full content as ONE canvas ──
+        // ── STEP 4: Capture full content as ONE canvas ──
         const fullCanvas = await html2canvas(renderDiv, {
             scale           : SCALE,
             useCORS         : true,
@@ -911,12 +938,21 @@ async function downloadPDF() {
             y               : 0,
             scrollX         : 0,
             scrollY         : 0,
-            ignoreElements  : (el) => {
-                // ignore everything except our renderDiv and its children
-                return el !== renderDiv &&
-                       el !== overlay &&
-                       !renderDiv.contains(el) &&
-                       !overlay.contains(el);
+            foreignObjectRendering : false,
+            removeContainer : true,
+            onclone         : (clonedDoc) => {
+                // Copy all KaTeX stylesheets into the cloned document
+                const katexLinks = document.querySelectorAll('link[href*="katex"]');
+                katexLinks.forEach(link => {
+                    const clonedLink = clonedDoc.createElement('link');
+                    clonedLink.rel = 'stylesheet';
+                    clonedLink.href = link.href;
+                    clonedDoc.head.appendChild(clonedLink);
+                });
+                // Also copy the PDF render styles
+                const pdfStyle = clonedDoc.createElement('style');
+                pdfStyle.textContent = buildRenderStyles(sz, s, hGap, pGap, lGap, p2px);
+                clonedDoc.head.appendChild(pdfStyle);
             }
         });
 
