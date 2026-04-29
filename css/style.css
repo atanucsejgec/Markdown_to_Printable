@@ -53,7 +53,6 @@
 }
 
 [data-theme="dark"] .paper-preview {
-    background: #1a1a2e !important;
     box-shadow: 0 4px 24px rgba(0,0,0,0.5);
 }
 
@@ -1297,6 +1296,41 @@ html, body {
     background: var(--primary-light) !important;
     color: var(--primary) !important;
     border-color: var(--primary) !important;
+}
+
+/* ============================================
+   SYNC SCROLL BUTTON
+============================================ */
+.sync-scroll-btn {
+    position: relative;
+    overflow: hidden;
+}
+.sync-scroll-btn.active-toggle {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+.sync-scroll-btn:not(.active-toggle) {
+    background: var(--surface2);
+    color: var(--text3);
+    border-color: var(--border);
+}
+.sync-scroll-btn:not(.active-toggle):hover {
+    color: var(--primary);
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+.sync-scroll-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    transform: translateX(-100%);
+    transition: none;
+}
+.sync-scroll-btn.active-toggle:hover::after {
+    transform: translateX(100%);
+    transition: transform 0.5s ease;
 }
 
 /* ============================================

@@ -10,6 +10,7 @@ const STATE = {
     markdown: '',
     format: 'pdf',
     previewEnabled: true,
+    syncScroll: true,
     settings: {
         fontFamily: 'Helvetica, Arial, sans-serif',
         bgColor: '#ffffff',
@@ -32,97 +33,99 @@ const STATE = {
 
 // Base ratios for relative mode (multiplied by baseSize)
 const SIZE_RATIOS = {
-    h1:   2.0,
-    h2:   1.7,
-    h3:   1.4,
-    h4:   1.2,
+    h1: 2.0,
+    h2: 1.7,
+    h3: 1.4,
+    h4: 1.2,
     body: 1.0,
     code: 0.9
 };
 
 // Paper dimensions in mm
 const PAPER_SIZES = {
-    A4:     { w: 210,  h: 297 },
-    A3:     { w: 297,  h: 420 },
-    A5:     { w: 148,  h: 210 },
-    Letter: { w: 215.9,h: 279.4 },
-    Legal:  { w: 215.9,h: 355.6 }
+    A4: { w: 210, h: 297 },
+    A3: { w: 297, h: 420 },
+    A5: { w: 148, h: 210 },
+    Letter: { w: 215.9, h: 279.4 },
+    Legal: { w: 215.9, h: 355.6 }
 };
 
 // ─── DOM REFS ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
 const DOM = {
-    markdownInput:   $('markdownInput'),
-    previewContent:  $('previewContent'),
-    paperPreview:    $('paperPreview'),
-    dropZone:        $('dropZone'),
-    fileInput:       $('fileInput'),
-    charCount:       $('charCount'),
-    lineCount:       $('lineCount'),
-    wordCount:       $('wordCount'),
+    markdownInput: $('markdownInput'),
+    previewContent: $('previewContent'),
+    paperPreview: $('paperPreview'),
+    dropZone: $('dropZone'),
+    fileInput: $('fileInput'),
+    charCount: $('charCount'),
+    lineCount: $('lineCount'),
+    wordCount: $('wordCount'),
     progressOverlay: $('progressOverlay'),
-    progressBar:     $('progressBar'),
-    progressText:    $('progressText'),
-    toast:           $('toast'),
+    progressBar: $('progressBar'),
+    progressText: $('progressText'),
+    toast: $('toast'),
 
     // Settings
-    fontFamily:      $('fontFamily'),
-    bgColor:         $('bgColor'),
-    bgColorHex:      $('bgColorHex'),
-    textColor:       $('textColor'),
-    textColorHex:    $('textColorHex'),
-    linkColor:       $('linkColor'),
-    linkColorHex:    $('linkColorHex'),
-    sizeMode:        $('sizeMode'),
-    baseSize:        $('baseSize'),
-    lineHeight:      $('lineHeight'),
-    headingGap:      $('headingGap'),
-    paraGap:         $('paraGap'),
-    listGap:         $('listGap'),
-    zeroSpace:       $('zeroSpace'),
-    columns:         $('columns'),
-    paperSize:       $('paperSize'),
-    orientPortrait:  $('orientPortrait'),
+    fontFamily: $('fontFamily'),
+    bgColor: $('bgColor'),
+    bgColorHex: $('bgColorHex'),
+    textColor: $('textColor'),
+    textColorHex: $('textColorHex'),
+    linkColor: $('linkColor'),
+    linkColorHex: $('linkColorHex'),
+    sizeMode: $('sizeMode'),
+    baseSize: $('baseSize'),
+    lineHeight: $('lineHeight'),
+    headingGap: $('headingGap'),
+    paraGap: $('paraGap'),
+    listGap: $('listGap'),
+    zeroSpace: $('zeroSpace'),
+    columns: $('columns'),
+    paperSize: $('paperSize'),
+    orientPortrait: $('orientPortrait'),
     orientLandscape: $('orientLandscape'),
-    marginTop:       $('marginTop'),
-    marginBot:       $('marginBot'),
-    marginLeft:      $('marginLeft'),
-    marginRight:     $('marginRight'),
+    marginTop: $('marginTop'),
+    marginBot: $('marginBot'),
+    marginLeft: $('marginLeft'),
+    marginRight: $('marginRight'),
 
     // Displays
-    h1SizeDisplay:   $('h1SizeDisplay'),
-    h2SizeDisplay:   $('h2SizeDisplay'),
-    h3SizeDisplay:   $('h3SizeDisplay'),
-    h4SizeDisplay:   $('h4SizeDisplay'),
+    h1SizeDisplay: $('h1SizeDisplay'),
+    h2SizeDisplay: $('h2SizeDisplay'),
+    h3SizeDisplay: $('h3SizeDisplay'),
+    h4SizeDisplay: $('h4SizeDisplay'),
     bodySizeDisplay: $('bodySizeDisplay'),
     codeSizeDisplay: $('codeSizeDisplay'),
 
     // Fixed inputs
-    h1Fixed:         $('h1Fixed'),
-    h2Fixed:         $('h2Fixed'),
-    h3Fixed:         $('h3Fixed'),
-    h4Fixed:         $('h4Fixed'),
-    bodyFixed:       $('bodyFixed'),
-    codeFixed:       $('codeFixed'),
+    h1Fixed: $('h1Fixed'),
+    h2Fixed: $('h2Fixed'),
+    h3Fixed: $('h3Fixed'),
+    h4Fixed: $('h4Fixed'),
+    bodyFixed: $('bodyFixed'),
+    codeFixed: $('codeFixed'),
 
     fontSizeRelative: $('fontSizeMode_relative'),
-    fontSizeFixed:    $('fontSizeMode_fixed'),
+    fontSizeFixed: $('fontSizeMode_fixed'),
 
     // New feature refs
-    themeToggle:     $('themeToggle'),
-    themeIcon:       $('themeIcon'),
-    findReplaceBar:  $('findReplaceBar'),
-    findInput:       $('findInput'),
-    replaceInput:    $('replaceInput'),
-    findCount:       $('findCount'),
+    themeToggle: $('themeToggle'),
+    themeIcon: $('themeIcon'),
+    findReplaceBar: $('findReplaceBar'),
+    findInput: $('findInput'),
+    replaceInput: $('replaceInput'),
+    findCount: $('findCount'),
     findCaseSensitive: $('findCaseSensitive'),
-    readingTime:     $('readingTime'),
-    wordGoalInput:   $('wordGoalInput'),
+    readingTime: $('readingTime'),
+    wordGoalInput: $('wordGoalInput'),
     wordGoalBarWrap: $('wordGoalBarWrap'),
-    wordGoalBar:     $('wordGoalBar'),
-    wordGoalPct:     $('wordGoalPct'),
-    codeTheme:       $('codeTheme'),
+    wordGoalBar: $('wordGoalBar'),
+    wordGoalPct: $('wordGoalPct'),
+    codeTheme: $('codeTheme'),
+    syncScrollBtn: $('syncScrollBtn'),
+    previewWrapper: $('previewWrapper'),
 };
 
 // ─── MARKED CONFIG ───────────────────────────────────────────────────────────
@@ -132,18 +135,68 @@ marked.setOptions({
 });
 
 // ─── MATH RENDERING (KaTeX) ─────────────────────────────────────────────────
-function renderMath(element) {
-    if (typeof renderMathInElement === 'function') {
-        renderMathInElement(element, {
-            delimiters: [
-                { left: '$$', right: '$$', display: true },
-                { left: '$', right: '$', display: false },
-                { left: '\\(', right: '\\)', display: false },
-                { left: '\\[', right: '\\]', display: true },
-            ],
-            throwOnError: false,
-        });
+// Protect math blocks from marked.js mangling (underscores → <em>, etc.)
+// by extracting them before markdown parsing and reinserting after.
+const _mathPlaceholders = [];
+
+function protectMath(mdText) {
+    _mathPlaceholders.length = 0;
+    let idx = 0;
+
+    // Protect display math: $$...$$  (including multi-line)
+    mdText = mdText.replace(/\$\$([\s\S]+?)\$\$/g, (match, content) => {
+        const placeholder = `%%MATH_DISPLAY_${idx}%%`;
+        _mathPlaceholders.push({ placeholder, content: content.trim(), display: true });
+        idx++;
+        return placeholder;
+    });
+
+    // Protect \\[...\\]  display math
+    mdText = mdText.replace(/\\\[[\s\S]+?\\\]/g, (match) => {
+        const placeholder = `%%MATH_DISPLAY_${idx}%%`;
+        const content = match.slice(2, -2).trim();
+        _mathPlaceholders.push({ placeholder, content, display: true });
+        idx++;
+        return placeholder;
+    });
+
+    // Protect inline math: $...$  (single-line, not greedy)
+    mdText = mdText.replace(/\$([^\$\n]+?)\$/g, (match, content) => {
+        const placeholder = `%%MATH_INLINE_${idx}%%`;
+        _mathPlaceholders.push({ placeholder, content: content.trim(), display: false });
+        idx++;
+        return placeholder;
+    });
+
+    // Protect \\(...\\)  inline math
+    mdText = mdText.replace(/\\\((.+?)\\\)/g, (match, content) => {
+        const placeholder = `%%MATH_INLINE_${idx}%%`;
+        _mathPlaceholders.push({ placeholder, content: content.trim(), display: false });
+        idx++;
+        return placeholder;
+    });
+
+    return mdText;
+}
+
+function restoreMath(html) {
+    for (const { placeholder, content, display } of _mathPlaceholders) {
+        try {
+            const rendered = katex.renderToString(content, {
+                displayMode: display,
+                throwOnError: false,
+            });
+            html = html.replace(placeholder, rendered);
+        } catch (e) {
+            // If KaTeX fails, show the raw LaTeX in a styled span
+            const escaped = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const wrapper = display
+                ? `<div class="katex-error" style="color:red;text-align:center">${escaped}</div>`
+                : `<span class="katex-error" style="color:red">${escaped}</span>`;
+            html = html.replace(placeholder, wrapper);
+        }
     }
+    return html;
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
@@ -263,7 +316,7 @@ function bindEvents() {
     DOM.sizeMode.addEventListener('change', () => {
         STATE.settings.sizeMode = DOM.sizeMode.value;
         DOM.fontSizeRelative.style.display = STATE.settings.sizeMode === 'relative' ? '' : 'none';
-        DOM.fontSizeFixed.style.display    = STATE.settings.sizeMode === 'fixed'    ? '' : 'none';
+        DOM.fontSizeFixed.style.display = STATE.settings.sizeMode === 'fixed' ? '' : 'none';
         applyPreviewStyles();
     });
 
@@ -297,9 +350,9 @@ function bindEvents() {
     });
 
     // Fixed size inputs
-    ['h1Fixed','h2Fixed','h3Fixed','h4Fixed','bodyFixed','codeFixed'].forEach(id => {
+    ['h1Fixed', 'h2Fixed', 'h3Fixed', 'h4Fixed', 'bodyFixed', 'codeFixed'].forEach(id => {
         $(id).addEventListener('input', () => {
-            const key = id.replace('Fixed','');
+            const key = id.replace('Fixed', '');
             STATE.settings.fixedSizes[key] = parseFloat($(id).value) || 10;
             applyPreviewStyles();
         });
@@ -342,9 +395,9 @@ function bindEvents() {
         updatePaperSize();
     });
 
-    ['marginTop','marginBot','marginLeft','marginRight'].forEach(id => {
+    ['marginTop', 'marginBot', 'marginLeft', 'marginRight'].forEach(id => {
         $(id).addEventListener('input', () => {
-            const key = id.replace('margin','').toLowerCase();
+            const key = id.replace('margin', '').toLowerCase();
             STATE.settings.margins[key] = parseFloat($(id).value) || 0;
             applyPreviewStyles();
         });
@@ -411,6 +464,10 @@ function bindEvents() {
         document.getElementById('hljs-theme').href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`;
         updatePreview();
     });
+
+    // ── Sync Scroll ──
+    DOM.syncScrollBtn.addEventListener('click', toggleSyncScroll);
+    initSyncScroll();
 }
 
 // ─── HELPER: Bind number input with +/- buttons ───────────────────────────
@@ -432,7 +489,7 @@ function bindNumberInput(inputId, plusId, minusId, min, max, step, cb) {
 
 // ─── FILE READER ─────────────────────────────────────────────────────────────
 function readFile(file) {
-    const allowed = ['text/markdown','text/plain','text/x-markdown',''];
+    const allowed = ['text/markdown', 'text/plain', 'text/x-markdown', ''];
     const reader = new FileReader();
     reader.onload = e => {
         DOM.markdownInput.value = e.target.result;
@@ -461,6 +518,45 @@ function updateStats() {
 
 // ─── DEBOUNCE PREVIEW ────────────────────────────────────────────────────────
 let previewTimer = null;
+// ─── SYNC SCROLL ─────────────────────────────────────────────────────────────
+let _syncScrollLock = false;
+let _syncScrollRAF = null;
+
+function toggleSyncScroll() {
+    STATE.syncScroll = !STATE.syncScroll;
+    DOM.syncScrollBtn.classList.toggle('active-toggle', STATE.syncScroll);
+    DOM.syncScrollBtn.textContent = STATE.syncScroll ? '🔗 Sync Scroll On' : '🔓 Sync Scroll Off';
+    showToast(STATE.syncScroll ? 'Sync scroll ON' : 'Sync scroll OFF');
+}
+
+function initSyncScroll() {
+    const editor = DOM.markdownInput;
+    const preview = DOM.previewWrapper;
+
+    editor.addEventListener('scroll', () => {
+        if (!STATE.syncScroll || _syncScrollLock) return;
+        _syncScrollLock = true;
+        cancelAnimationFrame(_syncScrollRAF);
+        _syncScrollRAF = requestAnimationFrame(() => {
+            const scrollPct = editor.scrollTop / Math.max(1, editor.scrollHeight - editor.clientHeight);
+            preview.scrollTop = scrollPct * (preview.scrollHeight - preview.clientHeight);
+            // Release lock after a brief delay to prevent feedback loop
+            setTimeout(() => { _syncScrollLock = false; }, 30);
+        });
+    });
+
+    preview.addEventListener('scroll', () => {
+        if (!STATE.syncScroll || _syncScrollLock) return;
+        _syncScrollLock = true;
+        cancelAnimationFrame(_syncScrollRAF);
+        _syncScrollRAF = requestAnimationFrame(() => {
+            const scrollPct = preview.scrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight);
+            editor.scrollTop = scrollPct * (editor.scrollHeight - editor.clientHeight);
+            setTimeout(() => { _syncScrollLock = false; }, 30);
+        });
+    });
+}
+
 function debouncePreview() {
     clearTimeout(previewTimer);
     previewTimer = setTimeout(updatePreview, 200);
@@ -474,15 +570,20 @@ function updatePreview() {
         return;
     }
     try {
-        DOM.previewContent.innerHTML = marked.parse(md);
-        renderMath(DOM.previewContent);
+        // 1. Protect math blocks from marked.js mangling
+        const protected_md = protectMath(md);
+        // 2. Parse markdown (math is safe as placeholders)
+        let html = marked.parse(protected_md);
+        // 3. Restore math: replace placeholders with KaTeX-rendered output
+        html = restoreMath(html);
+        DOM.previewContent.innerHTML = html;
         // Syntax highlighting
         if (typeof hljs !== 'undefined') {
             DOM.previewContent.querySelectorAll('pre code').forEach(block => {
                 hljs.highlightElement(block);
             });
         }
-    } catch(e) {
+    } catch (e) {
         DOM.previewContent.innerHTML = `<p style="color:red">Parse error: ${e.message}</p>`;
     }
 }
@@ -493,10 +594,10 @@ function getElementSizes() {
     if (s.sizeMode === 'relative') {
         const base = s.baseSize;
         return {
-            h1:   +(base * SIZE_RATIOS.h1).toFixed(1),
-            h2:   +(base * SIZE_RATIOS.h2).toFixed(1),
-            h3:   +(base * SIZE_RATIOS.h3).toFixed(1),
-            h4:   +(base * SIZE_RATIOS.h4).toFixed(1),
+            h1: +(base * SIZE_RATIOS.h1).toFixed(1),
+            h2: +(base * SIZE_RATIOS.h2).toFixed(1),
+            h3: +(base * SIZE_RATIOS.h3).toFixed(1),
+            h4: +(base * SIZE_RATIOS.h4).toFixed(1),
             body: +(base * SIZE_RATIOS.body).toFixed(1),
             code: +(base * SIZE_RATIOS.code).toFixed(1),
         };
@@ -507,10 +608,10 @@ function getElementSizes() {
 
 function updateSizeDisplays() {
     const sz = getElementSizes();
-    DOM.h1SizeDisplay.textContent   = sz.h1;
-    DOM.h2SizeDisplay.textContent   = sz.h2;
-    DOM.h3SizeDisplay.textContent   = sz.h3;
-    DOM.h4SizeDisplay.textContent   = sz.h4;
+    DOM.h1SizeDisplay.textContent = sz.h1;
+    DOM.h2SizeDisplay.textContent = sz.h2;
+    DOM.h3SizeDisplay.textContent = sz.h3;
+    DOM.h4SizeDisplay.textContent = sz.h4;
     DOM.bodySizeDisplay.textContent = sz.body;
     DOM.codeSizeDisplay.textContent = sz.code;
 }
@@ -521,6 +622,7 @@ function applyPreviewStyles() {
     const sz = getElementSizes();
     const m = s.margins;
     const paper = PAPER_SIZES[s.paperSize] || PAPER_SIZES.A4;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
 
     // Px per mm at 96dpi
     const pxPerMm = 96 / 25.4;
@@ -532,7 +634,7 @@ function applyPreviewStyles() {
     const paperWpx = paperW * pxPerMm;
 
     // Paper preview dimensions
-    DOM.paperPreview.style.width    = `${paperWpx}px`;
+    DOM.paperPreview.style.width = `${paperWpx}px`;
     DOM.paperPreview.style.minHeight = `${paperH * pxPerMm}px`;
     DOM.paperPreview.style.background = s.bgColor;
     DOM.paperPreview.style.color = s.textColor;
@@ -544,10 +646,10 @@ function applyPreviewStyles() {
     // Columns
     if (s.columns > 1) {
         DOM.previewContent.style.columnCount = s.columns;
-        DOM.previewContent.style.columnGap   = '8mm';
+        DOM.previewContent.style.columnGap = '8mm';
     } else {
         DOM.previewContent.style.columnCount = '';
-        DOM.previewContent.style.columnGap   = '';
+        DOM.previewContent.style.columnGap = '';
     }
 
     // Build inline CSS for preview content
@@ -646,14 +748,16 @@ function applyPreviewStyles() {
         #previewContent code {
             font-size: ${ptToPx(sz.code)};
             font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.06);
+            background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'};
+            color: ${s.textColor};
             padding: 1px 3px;
             border-radius: 2px;
         }
         #previewContent pre {
             font-size: ${ptToPx(sz.code)};
             font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.06);
+            background: ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+            color: ${s.textColor};
             padding: ${pGap + 4}px 8px;
             margin: ${pGap}px 0;
             border-radius: 3px;
@@ -663,6 +767,7 @@ function applyPreviewStyles() {
         #previewContent pre code {
             background: none;
             padding: 0;
+            color: inherit;
         }
         #previewContent blockquote {
             margin: ${pGap}px 0;
@@ -725,30 +830,34 @@ function resetSettings() {
         fixedSizes: { h1: 20, h2: 17, h3: 14, h4: 12, body: 10, code: 9 }
     };
 
-    DOM.fontFamily.value    = STATE.settings.fontFamily;
-    DOM.bgColor.value       = STATE.settings.bgColor;
+    DOM.fontFamily.value = STATE.settings.fontFamily;
+    DOM.bgColor.value = STATE.settings.bgColor;
     DOM.bgColorHex.textContent = STATE.settings.bgColor;
-    DOM.textColor.value     = STATE.settings.textColor;
+    DOM.textColor.value = STATE.settings.textColor;
     DOM.textColorHex.textContent = STATE.settings.textColor;
-    DOM.linkColor.value     = STATE.settings.linkColor;
+    DOM.linkColor.value = STATE.settings.linkColor;
     DOM.linkColorHex.textContent = STATE.settings.linkColor;
-    DOM.sizeMode.value      = STATE.settings.sizeMode;
-    DOM.baseSize.value      = STATE.settings.baseSize;
-    DOM.lineHeight.value    = STATE.settings.lineHeight;
-    DOM.headingGap.value    = STATE.settings.headingGap;
-    DOM.paraGap.value       = STATE.settings.paraGap;
-    DOM.listGap.value       = STATE.settings.listGap;
-    DOM.zeroSpace.checked   = STATE.settings.zeroSpace;
-    DOM.columns.value       = STATE.settings.columns;
-    DOM.paperSize.value     = STATE.settings.paperSize;
+    DOM.sizeMode.value = STATE.settings.sizeMode;
+    DOM.baseSize.value = STATE.settings.baseSize;
+    DOM.lineHeight.value = STATE.settings.lineHeight;
+    DOM.headingGap.value = STATE.settings.headingGap;
+    DOM.paraGap.value = STATE.settings.paraGap;
+    DOM.listGap.value = STATE.settings.listGap;
+    DOM.zeroSpace.checked = STATE.settings.zeroSpace;
+    DOM.columns.value = STATE.settings.columns;
+    DOM.paperSize.value = STATE.settings.paperSize;
     DOM.orientPortrait.checked = true;
-    DOM.marginTop.value     = STATE.settings.margins.top;
-    DOM.marginBot.value     = STATE.settings.margins.bot;
-    DOM.marginLeft.value    = STATE.settings.margins.left;
-    DOM.marginRight.value   = STATE.settings.margins.right;
+    DOM.marginTop.value = STATE.settings.margins.top;
+    DOM.marginBot.value = STATE.settings.margins.bot;
+    DOM.marginLeft.value = STATE.settings.margins.left;
+    DOM.marginRight.value = STATE.settings.margins.right;
 
     DOM.fontSizeRelative.style.display = '';
-    DOM.fontSizeFixed.style.display    = 'none';
+    DOM.fontSizeFixed.style.display = 'none';
+
+    // Re-apply theme-appropriate document colors
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    applyThemeDocColors(currentTheme);
 
     applyPreviewStyles();
     showToast('Settings reset!');
@@ -769,13 +878,9 @@ function buildPrintHTML() {
     const pGap = s.zeroSpace ? 0 : s.paraGap;
     const lGap = s.zeroSpace ? 0 : s.listGap;
 
-    const htmlContent = marked.parse(STATE.markdown || '');
-
-    // Build a temporary container to render math, then extract HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
-    renderMath(tempDiv);
-    const renderedContent = tempDiv.innerHTML;
+    const protectedMd = protectMath(STATE.markdown || '');
+    const htmlContent = marked.parse(protectedMd);
+    const renderedContent = restoreMath(htmlContent);
 
     // Collect KaTeX CSS for self-contained export
     let katexCSS = '';
@@ -786,7 +891,7 @@ function buildPrintHTML() {
                 break;
             }
         }
-    } catch(e) { /* ignore cross-origin errors */ }
+    } catch (e) { /* ignore cross-origin errors */ }
 
     return `<!DOCTYPE html>
 <html>
@@ -809,7 +914,7 @@ body {
     color: ${s.textColor};
     background: ${s.bgColor};
 }
-h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, hr { break-inside: avoid; }
+h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, table, hr { break-inside: avoid; }
 ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .col-wrap > * { break-inside: avoid; }` : ''}
 h1 {
     font-size: ${sz.h1}pt;
@@ -916,9 +1021,9 @@ async function handleDownload() {
     }
 
     switch (STATE.format) {
-        case 'pdf':  await downloadPDF();  break;
-        case 'doc':  downloadDOC();         break;
-        case 'html': downloadHTML();        break;
+        case 'pdf': await downloadPDF(); break;
+        case 'doc': downloadDOC(); break;
+        case 'html': downloadHTML(); break;
     }
 }
 
@@ -935,42 +1040,35 @@ async function downloadPDF() {
             return;
         }
 
-        const s     = STATE.settings;
-        const sz    = getElementSizes();
-        const m     = s.margins;
+        const s = STATE.settings;
+        const sz = getElementSizes();
+        const m = s.margins;
         const paper = PAPER_SIZES[s.paperSize] || PAPER_SIZES.A4;
 
         let paperW = paper.w, paperH = paper.h;
         if (s.orientation === 'landscape') { [paperW, paperH] = [paperH, paperW]; }
 
-        const MM_TO_PX      = 96 / 25.4;
-        const SCALE         = 2;
+        const MM_TO_PX = 96 / 25.4;
+        const SCALE = 2;
 
-        const marginLpx     = m.left  * 10 * MM_TO_PX;
-        const marginRpx     = m.right * 10 * MM_TO_PX;
-        const marginTpx     = m.top   * 10 * MM_TO_PX;
-        const marginBpx     = m.bot   * 10 * MM_TO_PX;
-        const contentWpx    = Math.floor((paperW * MM_TO_PX) - marginLpx - marginRpx);
-        const pageHpx       = Math.floor(paperH  * MM_TO_PX);
-        const availableHpx  = Math.floor(pageHpx - marginTpx - marginBpx);
+        const marginLpx = m.left * 10 * MM_TO_PX;
+        const marginRpx = m.right * 10 * MM_TO_PX;
+        const marginTpx = m.top * 10 * MM_TO_PX;
+        const marginBpx = m.bot * 10 * MM_TO_PX;
+        const contentWpx = Math.floor((paperW * MM_TO_PX) - marginLpx - marginRpx);
+        const pageHpx = Math.floor(paperH * MM_TO_PX);
+        const availableHpx = Math.floor(pageHpx - marginTpx - marginBpx);
 
-        const hGap  = s.zeroSpace ? 0 : s.headingGap;
-        const pGap  = s.zeroSpace ? 0 : s.paraGap;
-        const lGap  = s.zeroSpace ? 0 : s.listGap;
+        const hGap = s.zeroSpace ? 0 : s.headingGap;
+        const pGap = s.zeroSpace ? 0 : s.paraGap;
+        const lGap = s.zeroSpace ? 0 : s.listGap;
 
         updateProgress(15, 'Building render layer...');
 
         // ── STEP 1: Render markdown to HTML with math ──
-        const htmlContent = marked.parse(STATE.markdown);
-
-        // Render math using a temp div in the main document
-        const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
-        tempDiv.innerHTML = htmlContent;
-        document.body.appendChild(tempDiv);
-        renderMath(tempDiv);
-        const renderedHTML = tempDiv.innerHTML;
-        document.body.removeChild(tempDiv);
+        const protectedMd = protectMath(STATE.markdown);
+        const htmlContent = marked.parse(protectedMd);
+        const renderedHTML = restoreMath(htmlContent);
 
         // ── STEP 2: Build complete HTML for the iframe ──
         // Collect all KaTeX inline styles (the rendered spans use inline styles)
@@ -982,7 +1080,7 @@ async function downloadPDF() {
                     break;
                 }
             }
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
 
         const iframeHTML = `<!DOCTYPE html>
 <html>
@@ -1020,7 +1118,7 @@ hr { border: none; border-top: 1px solid ${s.textColor}33; margin: ${pGap * 2}px
 img { max-width: 100%; }
 strong { font-weight: 700; }
 em { font-style: italic; }
-h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, hr { break-inside: avoid; }
+h1, h2, h3, h4, h5, h6, p, ul, ol, blockquote, table, hr { break-inside: avoid; }
 ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .col-wrap > * { break-inside: avoid; }` : ''}
 </style>
 </head>
@@ -1055,7 +1153,7 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
             if (iframe.contentDocument.fonts && iframe.contentDocument.fonts.ready) {
                 await iframe.contentDocument.fonts.ready;
             }
-        } catch(e) { /* ignore */ }
+        } catch (e) { /* ignore */ }
         await new Promise(r => setTimeout(r, 300));
 
         updateProgress(20, 'Measuring content...');
@@ -1073,6 +1171,9 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
         const contentRoot = s.columns > 1 ? iframeBody.querySelector('.col-wrap') || iframeBody : iframeBody;
         const blockChildren = Array.from(contentRoot.children);
 
+        // Elements that must NOT be split across pages
+        const ATOMIC_TAGS = ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'BLOCKQUOTE', 'TABLE', 'HR'];
+
         // Collect the bottom edge of every block child (recursively for nested)
         function collectBlockEdges(parent) {
             const edges = [];
@@ -1080,11 +1181,26 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
             for (const child of children) {
                 const rect = child.getBoundingClientRect();
                 const bodyRect = iframeBody.getBoundingClientRect();
-                const top = rect.top - bodyRect.top;
-                const bottom = rect.bottom - bodyRect.top;
-                edges.push({ top: Math.round(top), bottom: Math.round(bottom) });
-                // Also collect edges from nested children for better granularity
-                if (child.children.length > 0 && !['PRE', 'CODE', 'TABLE'].includes(child.tagName)) {
+                const top = Math.round(rect.top - bodyRect.top);
+                const bottom = Math.round(rect.bottom - bodyRect.top);
+                edges.push({ top, bottom, tag: child.tagName });
+
+                // For PRE (code blocks): collect line-level edges so they CAN be split
+                if (child.tagName === 'PRE') {
+                    // Try to get edges from child CODE element's text lines
+                    const codeEl = child.querySelector('code') || child;
+                    const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 16;
+                    const prePadTop = parseFloat(getComputedStyle(child).paddingTop) || 0;
+                    const prePadBot = parseFloat(getComputedStyle(child).paddingBottom) || 0;
+                    const innerTop = top + prePadTop;
+                    const innerBot = bottom - prePadBot;
+                    // Generate break points at each line within the code block
+                    for (let y = innerTop + lineHeight; y < innerBot; y += lineHeight) {
+                        edges.push({ top: Math.round(y - lineHeight), bottom: Math.round(y), tag: '_CODE_LINE' });
+                    }
+                }
+                // For non-atomic elements (not text, not code, not table): recurse into children
+                else if (child.children.length > 0 && !ATOMIC_TAGS.includes(child.tagName) && child.tagName !== 'CODE') {
                     edges.push(...collectBlockEdges(child));
                 }
             }
@@ -1124,16 +1240,16 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
 
         // ── STEP 5: Capture full content as ONE canvas using html2canvas ──
         const fullCanvas = await html2canvas(iframeBody, {
-            scale           : SCALE,
-            useCORS         : true,
-            allowTaint      : true,
-            logging         : false,
-            backgroundColor : s.bgColor || '#ffffff',
-            width           : contentWpx,
-            height          : totalH,
-            windowWidth     : contentWpx,
-            windowHeight    : totalH,
-            foreignObjectRendering : false,
+            scale: SCALE,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            backgroundColor: s.bgColor || '#ffffff',
+            width: contentWpx,
+            height: totalH,
+            windowWidth: contentWpx,
+            windowHeight: totalH,
+            foreignObjectRendering: false,
         });
 
         updateProgress(60, 'Slicing pages...');
@@ -1145,16 +1261,16 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
         // ── STEP 7: Create PDF ──
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
-            orientation : s.orientation === 'landscape' ? 'l' : 'p',
-            unit        : 'mm',
-            format      : [paperW, paperH],
-            compress    : true,
+            orientation: s.orientation === 'landscape' ? 'l' : 'p',
+            unit: 'mm',
+            format: [paperW, paperH],
+            compress: true,
         });
 
-        const pdfX        = m.left * 10;
-        const pdfY        = m.top  * 10;
+        const pdfX = m.left * 10;
+        const pdfY = m.top * 10;
         const pdfContentW = paperW - (m.left * 10) - (m.right * 10);
-        const pdfContentH = paperH - (m.top  * 10) - (m.bot   * 10);
+        const pdfContentH = paperH - (m.top * 10) - (m.bot * 10);
 
         const canvasPageH = Math.round(availableHpx * SCALE);
 
@@ -1179,7 +1295,7 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
 
             // Create page slice canvas
             const pageCanvas = document.createElement('canvas');
-            pageCanvas.width  = fullCanvas.width;
+            pageCanvas.width = fullCanvas.width;
             pageCanvas.height = srcH;
 
             const ctx = pageCanvas.getContext('2d');
@@ -1188,10 +1304,10 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
             ctx.drawImage(
                 fullCanvas,
                 0, srcY, fullCanvas.width, srcH,
-                0, 0,    fullCanvas.width, srcH
+                0, 0, fullCanvas.width, srcH
             );
 
-            const imgData  = pageCanvas.toDataURL('image/png');
+            const imgData = pageCanvas.toDataURL('image/png');
             // Actual height this slice represents in mm
             const sliceHmm = (sliceHpx / availableHpx) * pdfContentH;
 
@@ -1392,9 +1508,9 @@ ${printHTML}
 
         updateProgress(100, 'Done!');
 
-        const url  = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href     = url;
+        link.href = url;
         link.download = 'document.doc';
         link.click();
         URL.revokeObjectURL(url);
@@ -1402,7 +1518,7 @@ ${printHTML}
         setTimeout(hideProgress, 300);
         showToast('DOC downloaded!', 'success');
 
-    } catch(err) {
+    } catch (err) {
         hideProgress();
         showToast('DOC generation failed: ' + err.message, 'error');
     }
@@ -1415,9 +1531,9 @@ function downloadHTML() {
     try {
         const printHTML = buildPrintHTML();
         const blob = new Blob([printHTML], { type: 'text/html; charset=utf-8' });
-        const url  = URL.createObjectURL(blob);
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href     = url;
+        link.href = url;
         link.download = 'document.html';
         link.click();
         URL.revokeObjectURL(url);
@@ -1426,7 +1542,7 @@ function downloadHTML() {
         setTimeout(hideProgress, 300);
         showToast('HTML downloaded!', 'success');
 
-    } catch(err) {
+    } catch (err) {
         hideProgress();
         showToast('HTML generation failed: ' + err.message, 'error');
     }
@@ -1460,7 +1576,7 @@ function handlePrint() {
 function showProgress(text, pct) {
     DOM.progressOverlay.style.display = 'flex';
     DOM.progressText.textContent = text;
-    DOM.progressBar.style.width  = pct + '%';
+    DOM.progressBar.style.width = pct + '%';
 }
 
 function updateProgress(pct, text) {
@@ -1477,7 +1593,7 @@ let toastTimer = null;
 function showToast(msg, type = '') {
     const t = DOM.toast;
     t.textContent = msg;
-    t.className   = 'toast ' + type;
+    t.className = 'toast ' + type;
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
@@ -1485,67 +1601,184 @@ function showToast(msg, type = '') {
 
 // ─── SAMPLE MARKDOWN ─────────────────────────────────────────────────────────
 function loadSample() {
-    const sample = `# Mail Products
-Mails & Parcel Services available for domestic and international customers.
-Product Features Prohibited items and booking guidelines apply.
+    const sample = `# MDConvert — Feature Showcase
+Welcome to **MDConvert**! This sample demonstrates every formatting feature supported by the converter. Use it as a quick reference or to test your export settings.
 
-## International Letter Post
-India Post provides basic letter post services to over 190 countries worldwide.
-Blind Literature, Printed Papers, and Small Packets are accepted categories.
-printed documentation for business and personal communication is supported.
-In the international post, various weight limits apply per destination country
-(including books and registered items with tracking support).
-International Tracked Packets offer end-to-end delivery confirmation.
-In the international post, surface mail and airmail options are both available.
-airlifted parcels (SAL) are cost-effective with moderate delivery times.
-Express Mail Service (EMS) guarantees the fastest international delivery.
+## Text Formatting
+You can write in **bold**, *italic*, ***bold italic***, and ~~strikethrough~~. Inline \`code snippets\` are also supported with monospace styling.
 
-### Booking
-International Letter Post can be booked at any head post office.
+Here is a [clickable link](https://github.com) and an auto-linked URL: https://example.com
 
-### Letter Post Network
-These services are available across 25,000+ post offices in India.
+## Headings
+All six heading levels are supported:
 
-### Registration
-Registration facility is available for all letter post categories.
+### Heading Level 3
+#### Heading Level 4
+##### Heading Level 5
+###### Heading Level 6
 
-## Domestic Services
-Speed Post, Registered Post, Parcel Post, and Business Parcel services.
+## Lists
 
-### Speed Post
-- Guaranteed next-day delivery in metro cities
-- Time-bound delivery commitment
-- Real-time tracking via SMS and web portal
-- Available 24x7 at select offices
+### Unordered List
+- First item
+- Second item with **bold** text
+- Third item
+  - Nested item A
+  - Nested item B
+    - Deeply nested item
 
-### Registered Post
-- Proof of posting and delivery
-- Compensation on loss or damage
-- Suitable for important documents
+### Ordered List
+1. Step one — install the tool
+2. Step two — write your Markdown
+3. Step three — export to PDF
+   1. Choose page size
+   2. Set margins
+   3. Click download
 
-## Parcel Services
-Parcel booking with volumetric weight calculation applies.
+### Task List
+- [x] Write Markdown content
+- [x] Customize typography settings
+- [ ] Export to PDF
+- [ ] Share with team
 
-| Service | Weight Limit | Delivery Time |
-|---------|-------------|---------------|
-| Speed Post | 35 kg | 1-4 days |
-| Parcel Post | 35 kg | 4-7 days |
-| EMS | 30 kg | 3-5 days |
-| SAL | 20 kg | 7-14 days |
+## Tables
 
-## Tracking
-All registered and speed post items can be tracked at **indiapost.gov.in**
+| Feature | Status | Description |
+|---------|--------|-------------|
+| Live Preview | ✅ Ready | Real-time rendered output |
+| PDF Export | ✅ Ready | Smart page-break detection |
+| DOC Export | ✅ Ready | Word-compatible format |
+| Dark Mode | ✅ Ready | Full theme support |
+| Math (KaTeX) | ✅ Ready | Inline & display equations |
+| Syntax Highlighting | ✅ Ready | 8+ code themes |
 
+## Code Blocks
+
+Syntax-highlighted code blocks with language detection:
+
+\`\`\`javascript
+// Fibonacci sequence generator
+function fibonacci(n) {
+    const seq = [0, 1];
+    for (let i = 2; i < n; i++) {
+        seq.push(seq[i - 1] + seq[i - 2]);
+    }
+    return seq;
+}
+
+console.log(fibonacci(10));
+// Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
 \`\`\`
-Track: www.indiapost.gov.in/track
-API: api.indiapost.gov.in/tracking/v2
+
+\`\`\`python
+# Quick sort implementation
+def quicksort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[len(arr) // 2]
+    left = [x for x in arr if x < pivot]
+    middle = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+    return quicksort(left) + middle + quicksort(right)
+
+print(quicksort([3, 6, 8, 10, 1, 2, 1]))
 \`\`\`
 
-> **Note:** Rates and delivery times are subject to revision. 
-> Contact your nearest post office for current tariffs.
+\`\`\`html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hello World</title>
+</head>
+<body>
+    <h1>Hello, MDConvert!</h1>
+</body>
+</html>
+\`\`\`
+
+## Blockquotes
+
+> "The best way to predict the future is to invent it."
+> — *Alan Kay*
+
+> **Tip:** You can nest blockquotes for threaded discussions:
+>
+> > This is a nested reply.
+> >
+> > > And this goes even deeper!
+
+## Mathematics (KaTeX)
+
+MDConvert supports LaTeX math rendering via KaTeX.
+
+**Inline math:** The quadratic formula is $x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$ and Euler's identity is $e^{i\\pi} + 1 = 0$.
+
+**Display math:**
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} \\, dx = \\sqrt{\\pi}
+$$
+
+$$
+\\sum_{n=1}^{\\infty} \\frac{1}{n^2} = \\frac{\\pi^2}{6}
+$$
+
+## Horizontal Rules
+
+Use horizontal rules to separate sections:
 
 ---
-*India Post — Connecting India since 1854*`;
+
+## Images
+
+Images render inline and scale to fit the page width:
+
+![Placeholder Image](https://via.placeholder.com/600x200/2563eb/ffffff?text=MDConvert+Preview)
+
+## Mixed Content Example
+
+Below is a realistic document snippet combining multiple features:
+
+### API Response Format
+
+The server returns a JSON object with the following structure:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| \`id\` | string | Yes | Unique identifier |
+| \`name\` | string | Yes | Display name |
+| \`email\` | string | No | Contact email |
+| \`score\` | number | Yes | Rating from $0$ to $100$ |
+| \`tags\` | array | No | Classification labels |
+
+\`\`\`json
+{
+    "id": "usr_29a3b7",
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "score": 94.5,
+    "tags": ["premium", "verified"],
+    "metadata": {
+        "created": "2025-01-15T08:30:00Z",
+        "lastLogin": "2025-04-28T14:22:00Z"
+    }
+}
+\`\`\`
+
+> **Note:** All API responses are paginated. Use \`?page=2&limit=25\` query parameters for pagination.
+
+### Quick Stats
+
+- **Total Users:** 12,482
+- **Active Today:** 3,891
+- **Avg. Score:** $\\bar{x} = 78.3$
+- **Std. Deviation:** $\\sigma = 12.7$
+
+---
+
+*Generated by **MDConvert** — Markdown to PDF / DOC / HTML*`;
+
 
     DOM.markdownInput.value = sample;
     STATE.markdown = sample;
@@ -1555,10 +1788,28 @@ API: api.indiapost.gov.in/tracking/v2
 }
 
 // ─── THEME ───────────────────────────────────────────────────────────────────
+const DARK_DOC_COLORS = { bg: '#1a1a2e', text: '#e2e8f0', link: '#60a5fa' };
+const LIGHT_DOC_COLORS = { bg: '#ffffff', text: '#000000', link: '#0000EE' };
+
+function applyThemeDocColors(theme) {
+    const colors = theme === 'dark' ? DARK_DOC_COLORS : LIGHT_DOC_COLORS;
+    STATE.settings.bgColor = colors.bg;
+    STATE.settings.textColor = colors.text;
+    STATE.settings.linkColor = colors.link;
+    // Sync UI controls
+    DOM.bgColor.value = colors.bg;
+    DOM.bgColorHex.textContent = colors.bg;
+    DOM.textColor.value = colors.text;
+    DOM.textColorHex.textContent = colors.text;
+    DOM.linkColor.value = colors.link;
+    DOM.linkColorHex.textContent = colors.link;
+}
+
 function loadTheme() {
     const saved = localStorage.getItem('mdconvert_theme') || 'light';
     document.documentElement.setAttribute('data-theme', saved);
     DOM.themeIcon.textContent = saved === 'dark' ? '☀️' : '🌙';
+    applyThemeDocColors(saved);
 }
 
 function toggleTheme() {
@@ -1567,6 +1818,8 @@ function toggleTheme() {
     document.documentElement.setAttribute('data-theme', next);
     DOM.themeIcon.textContent = next === 'dark' ? '☀️' : '🌙';
     localStorage.setItem('mdconvert_theme', next);
+    applyThemeDocColors(next);
+    applyPreviewStyles();
     showToast(`${next === 'dark' ? '🌙 Dark' : '☀️ Light'} mode`, 'success');
 }
 
@@ -1578,7 +1831,7 @@ function handleToolbarAction(action) {
     const sel = ta.value.substring(start, end);
     let before = '', after = '', insert = '';
 
-    switch(action) {
+    switch (action) {
         case 'h1': before = '# '; insert = sel || 'Heading 1'; break;
         case 'h2': before = '## '; insert = sel || 'Heading 2'; break;
         case 'h3': before = '### '; insert = sel || 'Heading 3'; break;
@@ -1611,7 +1864,7 @@ function handleToolbarAction(action) {
 
 function handleEditorShortcuts(e) {
     if (!(e.ctrlKey || e.metaKey)) return;
-    switch(e.key.toLowerCase()) {
+    switch (e.key.toLowerCase()) {
         case 'b': e.preventDefault(); handleToolbarAction('bold'); break;
         case 'i': e.preventDefault(); handleToolbarAction('italic'); break;
         case 'k': e.preventDefault(); handleToolbarAction('link'); break;
@@ -1777,7 +2030,7 @@ function restoreSession() {
             }
             DOM.fontSizeRelative.style.display = s.sizeMode === 'fixed' ? 'none' : '';
             DOM.fontSizeFixed.style.display = s.sizeMode === 'fixed' ? '' : 'none';
-        } catch(e) { /* ignore parse errors */ }
+        } catch (e) { /* ignore parse errors */ }
     }
 
     if (savedContent) {
