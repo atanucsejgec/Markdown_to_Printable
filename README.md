@@ -16,6 +16,7 @@
 [![Stars](https://img.shields.io/github/stars/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=yellow)](https://github.com/atanucsejgec/Markdown_to_Printable/stargazers)
 [![Issues](https://img.shields.io/github/issues/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=red)](https://github.com/atanucsejgec/Markdown_to_Printable/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=green)](https://github.com/atanucsejgec/Markdown_to_Printable/commits)
+[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Website-6CF7FF?style=for-the-badge)](https://atanucsejgec.github.io/Markdown_to_Printable/)
 
 <br/>
 
@@ -23,7 +24,7 @@
 
 <br/>
 
-[🚀 Getting Started](#️-getting-started) • [✨ Features](#-features) • [🎯 Why MDConvert?](#-why-mdconvert) • [📁 Structure](#-project-structure) • [🤝 Contribute](#-contributing)
+[🌐 Live Demo](https://atanucsejgec.github.io/Markdown_to_Printable/) • [🚀 Getting Started](#️-getting-started) • [✨ Features](#-features) • [🎯 Why MDConvert?](#-why-mdconvert) • [📁 Structure](#-project-structure) • [🤝 Contribute](#-contributing)
 
 </div>
 
@@ -106,24 +107,15 @@ Built with **vanilla HTML, CSS, and JavaScript**, it's lightweight, fast, and re
 
 <div align="center">
 
-<table>
-  <tr>
-    <td align="center"><b>☀️ Light Mode</b></td>
-    <td align="center"><b>🌙 Dark Mode</b></td>
-  </tr>
-  <tr>
-    <td>
-      <img width="450" alt="Light Mode Preview" src="screenshots/light-mode.png" />
-    </td>
-    <td>
-      <img width="450" alt="Dark Mode Preview" src="screenshots/dark-mode.png" />
-    </td>
-  </tr>
-</table>
+  ## ☀️ Light Mode</b>
+  <br>
+  <img  alt="Light Mode Preview" src="https://github.com/user-attachments/assets/a34a6b2d-b693-4979-bc7a-d4b7199018f0" />
+
+  ## 🌙 Dark Mode</b>
+  
+  <img  alt="Dark Mode Preview" src="https://github.com/user-attachments/assets/6d28a407-87a0-437c-9978-64780831cdb4" />
 
 </div>
-
-> 📷 *Replace the placeholder paths above with actual screenshots of your app.*
 
 ---
 
@@ -577,6 +569,8 @@ in the Software without restriction...
 [![Project](https://img.shields.io/badge/Project-Markdown__to__Printable-6CF7FF?style=for-the-badge&logo=markdown)](https://github.com/atanucsejgec/Markdown_to_Printable)
 
 📌 **Project Link:** [https://github.com/atanucsejgec/Markdown_to_Printable](https://github.com/atanucsejgec/Markdown_to_Printable)
+
+🌐 **Live Website:** [https://atanucsejgec.github.io/Markdown_to_Printable/](https://atanucsejgec.github.io/Markdown_to_Printable/)
 
 </div>
 

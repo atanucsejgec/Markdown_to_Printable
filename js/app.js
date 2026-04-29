@@ -137,11 +137,31 @@ marked.setOptions({
 // ─── MATH RENDERING (KaTeX) ─────────────────────────────────────────────────
 // Protect math blocks from marked.js mangling (underscores → <em>, etc.)
 // by extracting them before markdown parsing and reinserting after.
+// Also protects fenced code blocks from being matched by math regex.
 const _mathPlaceholders = [];
+const _codeBlockPlaceholders = [];
 
 function protectMath(mdText) {
     _mathPlaceholders.length = 0;
+    _codeBlockPlaceholders.length = 0;
     let idx = 0;
+    let codeIdx = 0;
+
+    // Step 0: Extract fenced code blocks first so $variable inside code isn't treated as math
+    mdText = mdText.replace(/```[\s\S]*?```/g, (match) => {
+        const placeholder = `%%CODE_BLOCK_${codeIdx}%%`;
+        _codeBlockPlaceholders.push({ placeholder, content: match });
+        codeIdx++;
+        return placeholder;
+    });
+
+    // Also protect inline code: `...$...`
+    mdText = mdText.replace(/`[^`]+`/g, (match) => {
+        const placeholder = `%%CODE_BLOCK_${codeIdx}%%`;
+        _codeBlockPlaceholders.push({ placeholder, content: match });
+        codeIdx++;
+        return placeholder;
+    });
 
     // Protect display math: $$...$$  (including multi-line)
     mdText = mdText.replace(/\$\$([\s\S]+?)\$\$/g, (match, content) => {
@@ -176,10 +196,27 @@ function protectMath(mdText) {
         return placeholder;
     });
 
+    // Restore code block placeholders so marked can process them normally
+    for (const { placeholder, content } of _codeBlockPlaceholders) {
+        mdText = mdText.replace(placeholder, content);
+    }
+
     return mdText;
 }
 
 function restoreMath(html) {
+    // Guard: if KaTeX failed to load from CDN, show raw LaTeX gracefully
+    if (typeof katex === 'undefined') {
+        for (const { placeholder, content, display } of _mathPlaceholders) {
+            const escaped = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const wrapper = display
+                ? `<div style="text-align:center;font-family:monospace;padding:8px;background:rgba(0,0,0,0.04);border-radius:4px">${escaped}</div>`
+                : `<code>${escaped}</code>`;
+            html = html.replace(placeholder, wrapper);
+        }
+        return html;
+    }
+
     for (const { placeholder, content, display } of _mathPlaceholders) {
         try {
             const rendered = katex.renderToString(content, {
@@ -489,7 +526,17 @@ function bindNumberInput(inputId, plusId, minusId, min, max, step, cb) {
 
 // ─── FILE READER ─────────────────────────────────────────────────────────────
 function readFile(file) {
-    const allowed = ['text/markdown', 'text/plain', 'text/x-markdown', ''];
+    // Validate file type by extension and MIME
+    const allowedMime = ['text/markdown', 'text/plain', 'text/x-markdown', ''];
+    const allowedExt = ['.md', '.txt', '.markdown', '.mdown', '.mkd', '.readme'];
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    const nameLC = file.name.toLowerCase();
+
+    if (!allowedMime.includes(file.type) && !allowedExt.includes(ext) && nameLC !== 'readme') {
+        showToast(`Unsupported file type: ${file.name}`, 'error');
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = e => {
         DOM.markdownInput.value = e.target.result;
@@ -639,19 +686,6 @@ function applyPreviewStyles() {
     DOM.paperPreview.style.background = s.bgColor;
     DOM.paperPreview.style.color = s.textColor;
 
-    // Content padding = margins
-    DOM.previewContent.style.padding =
-        `${m.top * 10}mm ${m.right * 10}mm ${m.bot * 10}mm ${m.left * 10}mm`;
-
-    // Columns
-    if (s.columns > 1) {
-        DOM.previewContent.style.columnCount = s.columns;
-        DOM.previewContent.style.columnGap = '8mm';
-    } else {
-        DOM.previewContent.style.columnCount = '';
-        DOM.previewContent.style.columnGap = '';
-    }
-
     // Build inline CSS for preview content
     const hGap = s.zeroSpace ? 0 : s.headingGap;
     const pGap = s.zeroSpace ? 0 : s.paraGap;
@@ -659,14 +693,6 @@ function applyPreviewStyles() {
 
     // pt to px: 1pt = 1.333px
     const ptToPx = pt => `${(pt * 1.3333).toFixed(2)}px`;
-
-    let css = `
-        font-family: ${s.fontFamily};
-        font-size: ${ptToPx(sz.body)};
-        line-height: ${s.lineHeight};
-        color: ${s.textColor};
-        background: ${s.bgColor};
-    `;
 
     DOM.previewContent.style.cssText = `
         padding: ${m.top * 10}mm ${m.right * 10}mm ${m.bot * 10}mm ${m.left * 10}mm;
@@ -1489,19 +1515,7 @@ function downloadDOC() {
 
         updateProgress(70, 'Building document...');
 
-        // Use mhtml format for Word compatibility
-        const docContent = `
-MIME-Version: 1.0
-Content-Type: multipart/related; boundary="boundary-md-convert"
-
---boundary-md-convert
-Content-Type: text/html; charset="utf-8"
-
-${printHTML}
-
---boundary-md-convert--`;
-
-        // Simpler approach: use HTML blob that Word can open
+        // Use HTML blob that Word can open
         const blob = new Blob(['\ufeff', printHTML], {
             type: 'application/msword'
         });
