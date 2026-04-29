@@ -808,8 +808,9 @@ body {
     line-height: ${s.lineHeight};
     color: ${s.textColor};
     background: ${s.bgColor};
-    ${s.columns > 1 ? `column-count: ${s.columns}; column-gap: 8mm;` : ''}
 }
+h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, hr { break-inside: avoid; }
+${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .col-wrap > * { break-inside: avoid; }` : ''}
 h1 {
     font-size: ${sz.h1}pt;
     margin: ${hGap}px 0;
@@ -903,7 +904,7 @@ strong { font-weight: 700; }
 em { font-style: italic; }
 </style>
 </head>
-<body>${renderedContent}</body>
+<body>${s.columns > 1 ? `<div class="col-wrap">${renderedContent}</div>` : renderedContent}</body>
 </html>`;
 }
 
@@ -1019,10 +1020,11 @@ hr { border: none; border-top: 1px solid ${s.textColor}33; margin: ${pGap * 2}px
 img { max-width: 100%; }
 strong { font-weight: 700; }
 em { font-style: italic; }
-${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
+h1, h2, h3, h4, h5, h6, p, ul, ol, pre, blockquote, table, hr { break-inside: avoid; }
+${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .col-wrap > * { break-inside: avoid; }` : ''}
 </style>
 </head>
-<body>${renderedHTML}</body>
+<body>${s.columns > 1 ? `<div class="col-wrap">${renderedHTML}</div>` : renderedHTML}</body>
 </html>`;
 
         // ── STEP 3: Create iframe and write content ──
@@ -1066,12 +1068,61 @@ ${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         await new Promise(r => setTimeout(r, 200));
 
-        const totalPages = Math.max(1, Math.ceil(totalH / availableHpx));
+        // ── STEP 4b: Find safe page break points between elements ──
+        // Walk all block-level children and find Y positions that don't cut through elements
+        const contentRoot = s.columns > 1 ? iframeBody.querySelector('.col-wrap') || iframeBody : iframeBody;
+        const blockChildren = Array.from(contentRoot.children);
 
-        updateProgress(25, `Rendering ${totalPages} page(s)...`);
+        // Collect the bottom edge of every block child (recursively for nested)
+        function collectBlockEdges(parent) {
+            const edges = [];
+            const children = Array.from(parent.children);
+            for (const child of children) {
+                const rect = child.getBoundingClientRect();
+                const bodyRect = iframeBody.getBoundingClientRect();
+                const top = rect.top - bodyRect.top;
+                const bottom = rect.bottom - bodyRect.top;
+                edges.push({ top: Math.round(top), bottom: Math.round(bottom) });
+                // Also collect edges from nested children for better granularity
+                if (child.children.length > 0 && !['PRE', 'CODE', 'TABLE'].includes(child.tagName)) {
+                    edges.push(...collectBlockEdges(child));
+                }
+            }
+            return edges;
+        }
+
+        const allEdges = collectBlockEdges(contentRoot);
+        // Sort by bottom position and deduplicate
+        allEdges.sort((a, b) => a.bottom - b.bottom);
+
+        // Compute safe break points: for each page boundary, find the nearest
+        // element boundary that fits within the page
+        const breakYs = [0]; // pixel positions where each page starts
+        let nextPageEnd = availableHpx;
+
+        while (nextPageEnd < totalH) {
+            // Find the last element whose bottom fits within this page
+            let bestBreak = nextPageEnd; // fallback: cut at exact boundary
+            for (let i = allEdges.length - 1; i >= 0; i--) {
+                const edge = allEdges[i];
+                if (edge.bottom <= nextPageEnd && edge.bottom > breakYs[breakYs.length - 1]) {
+                    bestBreak = edge.bottom;
+                    break;
+                }
+            }
+            // Safety: if bestBreak hasn't moved (no element boundary found), use a line-height snap
+            if (bestBreak <= breakYs[breakYs.length - 1]) {
+                bestBreak = nextPageEnd; // force progress to avoid infinite loop
+            }
+            breakYs.push(bestBreak);
+            nextPageEnd = bestBreak + availableHpx;
+        }
+
+        const smartTotalPages = breakYs.length;
+
+        updateProgress(25, `Rendering ${smartTotalPages} page(s)...`);
 
         // ── STEP 5: Capture full content as ONE canvas using html2canvas ──
-        // html2canvas works on the iframe body which is a proper document element
         const fullCanvas = await html2canvas(iframeBody, {
             scale           : SCALE,
             useCORS         : true,
@@ -1105,20 +1156,25 @@ ${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
         const pdfContentW = paperW - (m.left * 10) - (m.right * 10);
         const pdfContentH = paperH - (m.top  * 10) - (m.bot   * 10);
 
-        // Canvas pixels per page
         const canvasPageH = Math.round(availableHpx * SCALE);
 
-        // ── STEP 8: Slice canvas and add each page ──
-        for (let page = 0; page < totalPages; page++) {
+        // ── STEP 8: Slice canvas at smart break points ──
+        for (let page = 0; page < smartTotalPages; page++) {
             if (page > 0) pdf.addPage([paperW, paperH]);
 
             updateProgress(
-                60 + Math.round((page / totalPages) * 35),
-                `Page ${page + 1} / ${totalPages}`
+                60 + Math.round((page / smartTotalPages) * 35),
+                `Page ${page + 1} / ${smartTotalPages}`
             );
 
-            const srcY = page * canvasPageH;
-            const srcH = Math.min(canvasPageH, fullCanvas.height - srcY);
+            const sliceStartPx = breakYs[page];
+            const sliceEndPx = (page + 1 < breakYs.length) ? breakYs[page + 1] : totalH;
+            const sliceHpx = sliceEndPx - sliceStartPx;
+            if (sliceHpx <= 0) break;
+
+            // Convert to canvas coordinates (scaled)
+            const srcY = Math.round(sliceStartPx * SCALE);
+            const srcH = Math.min(Math.round(sliceHpx * SCALE), fullCanvas.height - srcY);
             if (srcH <= 0) break;
 
             // Create page slice canvas
@@ -1127,10 +1183,8 @@ ${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
             pageCanvas.height = srcH;
 
             const ctx = pageCanvas.getContext('2d');
-            // Fill with background color first
             ctx.fillStyle = s.bgColor || '#ffffff';
             ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-            // Draw slice
             ctx.drawImage(
                 fullCanvas,
                 0, srcY, fullCanvas.width, srcH,
@@ -1139,13 +1193,13 @@ ${s.columns > 1 ? `body { column-count: ${s.columns}; column-gap: 8mm; }` : ''}
 
             const imgData  = pageCanvas.toDataURL('image/png');
             // Actual height this slice represents in mm
-            const sliceHmm = (srcH / canvasPageH) * pdfContentH;
+            const sliceHmm = (sliceHpx / availableHpx) * pdfContentH;
 
             pdf.addImage(
                 imgData, 'PNG',
                 pdfX, pdfY,
                 pdfContentW,
-                sliceHmm,
+                Math.min(sliceHmm, pdfContentH),
                 '',
                 'FAST'
             );
