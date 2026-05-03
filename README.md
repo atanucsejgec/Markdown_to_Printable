@@ -16,7 +16,7 @@
 [![Stars](https://img.shields.io/github/stars/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=yellow)](https://github.com/atanucsejgec/Markdown_to_Printable/stargazers)
 [![Issues](https://img.shields.io/github/issues/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=red)](https://github.com/atanucsejgec/Markdown_to_Printable/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/atanucsejgec/Markdown_to_Printable?style=for-the-badge&color=green)](https://github.com/atanucsejgec/Markdown_to_Printable/commits)
-[![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Website-6CF7FF?style=for-the-badge)](https://atanucsejgec.github.io/Markdown_to_Printable/)
+[![Website Link](https://img.shields.io/badge/🌐_Website_Link-Visit_Website-6CF7FF?style=for-the-badge)](https://atanucsejgec.github.io/Markdown_to_Printable/)
 
 <br/>
 
@@ -24,7 +24,7 @@
 
 <br/>
 
-[🌐 Live Demo](https://atanucsejgec.github.io/Markdown_to_Printable/) • [🚀 Getting Started](#️-getting-started) • [✨ Features](#-features) • [🎯 Why MDConvert?](#-why-mdconvert) • [📁 Structure](#-project-structure) • [🤝 Contribute](#-contributing)
+[🌐 Website Link](https://atanucsejgec.github.io/Markdown_to_Printable/) • [🚀 Getting Started](#️-getting-started) • [✨ Features](#-features) • [🎯 Why MDConvert?](#-why-mdconvert) • [📁 Structure](#-project-structure) • [🤝 Contribute](#-contributing)
 
 </div>
 
