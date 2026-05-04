@@ -307,6 +307,92 @@ html, body {
     color: var(--text3);
 }
 
+/* ── Cursor & Selection Visibility ── */
+/* Custom cursor for Markdown Input panel */
+.markdown-textarea {
+    caret-color: #2563eb;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='4' fill='none' stroke='%232563eb' stroke-width='2'/%3E%3Cline x1='10' y1='0' x2='10' y2='6' stroke='%232563eb' stroke-width='1.5'/%3E%3Cline x1='10' y1='14' x2='10' y2='20' stroke='%232563eb' stroke-width='1.5'/%3E%3Cline x1='0' y1='10' x2='6' y2='10' stroke='%232563eb' stroke-width='1.5'/%3E%3Cline x1='14' y1='10' x2='20' y2='10' stroke='%232563eb' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, text;
+}
+.markdown-textarea:focus {
+    box-shadow: inset 4px 0 0 0 var(--primary);
+    outline: none;
+}
+.markdown-textarea::selection {
+    background: rgba(37, 99, 235, 0.35);
+    color: inherit;
+}
+.markdown-textarea::-moz-selection {
+    background: rgba(37, 99, 235, 0.35);
+    color: inherit;
+}
+
+/* Custom cursor for Live Preview panel */
+.preview-wrapper {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='4' fill='none' stroke='%237c3aed' stroke-width='2'/%3E%3Cline x1='10' y1='0' x2='10' y2='6' stroke='%237c3aed' stroke-width='1.5'/%3E%3Cline x1='10' y1='14' x2='10' y2='20' stroke='%237c3aed' stroke-width='1.5'/%3E%3Cline x1='0' y1='10' x2='6' y2='10' stroke='%237c3aed' stroke-width='1.5'/%3E%3Cline x1='14' y1='10' x2='20' y2='10' stroke='%237c3aed' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, text;
+}
+.preview-wrapper:focus-within,
+.preview-wrapper:focus {
+    box-shadow: inset 4px 0 0 0 var(--accent);
+}
+.preview-content ::selection {
+    background: rgba(124, 58, 237, 0.35);
+    color: inherit;
+}
+.preview-content ::-moz-selection {
+    background: rgba(124, 58, 237, 0.35);
+    color: inherit;
+}
+
+/* Dark theme cursor & selection adjustments */
+[data-theme="dark"] .markdown-textarea {
+    caret-color: #60a5fa;
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='4' fill='none' stroke='%2360a5fa' stroke-width='2'/%3E%3Cline x1='10' y1='0' x2='10' y2='6' stroke='%2360a5fa' stroke-width='1.5'/%3E%3Cline x1='10' y1='14' x2='10' y2='20' stroke='%2360a5fa' stroke-width='1.5'/%3E%3Cline x1='0' y1='10' x2='6' y2='10' stroke='%2360a5fa' stroke-width='1.5'/%3E%3Cline x1='14' y1='10' x2='20' y2='10' stroke='%2360a5fa' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, text;
+}
+[data-theme="dark"] .markdown-textarea:focus {
+    box-shadow: inset 4px 0 0 0 #3b82f6;
+}
+[data-theme="dark"] .markdown-textarea::selection {
+    background: rgba(59, 130, 246, 0.45);
+}
+[data-theme="dark"] .markdown-textarea::-moz-selection {
+    background: rgba(59, 130, 246, 0.45);
+}
+[data-theme="dark"] .preview-wrapper {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='10' cy='10' r='4' fill='none' stroke='%23a78bfa' stroke-width='2'/%3E%3Cline x1='10' y1='0' x2='10' y2='6' stroke='%23a78bfa' stroke-width='1.5'/%3E%3Cline x1='10' y1='14' x2='10' y2='20' stroke='%23a78bfa' stroke-width='1.5'/%3E%3Cline x1='0' y1='10' x2='6' y2='10' stroke='%23a78bfa' stroke-width='1.5'/%3E%3Cline x1='14' y1='10' x2='20' y2='10' stroke='%23a78bfa' stroke-width='1.5'/%3E%3C/svg%3E") 10 10, text;
+}
+[data-theme="dark"] .preview-wrapper:focus-within,
+[data-theme="dark"] .preview-wrapper:focus {
+    box-shadow: inset 4px 0 0 0 #8b5cf6;
+}
+[data-theme="dark"] .preview-content ::selection {
+    background: rgba(139, 92, 246, 0.45);
+}
+[data-theme="dark"] .preview-content ::-moz-selection {
+    background: rgba(139, 92, 246, 0.45);
+}
+
+/* Source-line highlight flash when syncing */
+.preview-content [data-source-line].sync-highlight {
+    background: rgba(37, 99, 235, 0.12);
+    border-radius: 3px;
+    transition: background 0.6s ease;
+}
+[data-theme="dark"] .preview-content [data-source-line].sync-highlight {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+/* Mirrored selection highlight (persistent until deselected) */
+.sync-selection {
+    background: rgba(250, 204, 21, 0.45);
+    border-radius: 2px;
+    box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.6);
+    transition: background 0.2s ease;
+}
+[data-theme="dark"] .sync-selection {
+    background: rgba(96, 165, 250, 0.3);
+    box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.4);
+}
+
 .editor-footer {
     display: flex;
     gap: 16px;

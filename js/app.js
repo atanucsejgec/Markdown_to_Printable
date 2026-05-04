@@ -580,6 +580,7 @@ function initSyncScroll() {
     const editor = DOM.markdownInput;
     const preview = DOM.previewWrapper;
 
+    // ── Continuous scroll sync (proportion-based, for scrolling) ──
     editor.addEventListener('scroll', () => {
         if (!STATE.syncScroll || _syncScrollLock) return;
         _syncScrollLock = true;
@@ -587,7 +588,6 @@ function initSyncScroll() {
         _syncScrollRAF = requestAnimationFrame(() => {
             const scrollPct = editor.scrollTop / Math.max(1, editor.scrollHeight - editor.clientHeight);
             preview.scrollTop = scrollPct * (preview.scrollHeight - preview.clientHeight);
-            // Release lock after a brief delay to prevent feedback loop
             setTimeout(() => { _syncScrollLock = false; }, 30);
         });
     });
@@ -602,7 +602,316 @@ function initSyncScroll() {
             setTimeout(() => { _syncScrollLock = false; }, 30);
         });
     });
+
+    // ── Scroll sync helpers (source-line based) ──
+    function getCursorLineNumber() {
+        const textBefore = editor.value.substring(0, editor.selectionStart);
+        return textBefore.split('\n').length - 1;
+    }
+
+    function findPreviewElementForLine(line) {
+        const tagged = DOM.previewContent.querySelectorAll('[data-source-line]');
+        if (tagged.length === 0) return null;
+        let best = null;
+        let bestDist = Infinity;
+        for (const el of tagged) {
+            const srcLine = parseInt(el.getAttribute('data-source-line'), 10);
+            const dist = Math.abs(srcLine - line);
+            if (srcLine <= line && dist < bestDist) { best = el; bestDist = dist; }
+        }
+        if (!best) {
+            for (const el of tagged) {
+                const srcLine = parseInt(el.getAttribute('data-source-line'), 10);
+                const dist = Math.abs(srcLine - line);
+                if (dist < bestDist) { best = el; bestDist = dist; }
+            }
+        }
+        return best;
+    }
+
+    function syncPreviewScrollToEditor() {
+        if (!STATE.syncScroll) return;
+        const cursorLine = getCursorLineNumber();
+        const targetEl = findPreviewElementForLine(cursorLine);
+        if (!targetEl) return;
+        _syncScrollLock = true;
+        cancelAnimationFrame(_syncScrollRAF);
+        _syncScrollRAF = requestAnimationFrame(() => {
+            const previewRect = preview.getBoundingClientRect();
+            const elRect = targetEl.getBoundingClientRect();
+            const offsetInPreview = elRect.top - previewRect.top + preview.scrollTop;
+            preview.scrollTop = Math.max(0, offsetInPreview - previewRect.height * 0.3);
+            setTimeout(() => { _syncScrollLock = false; }, 60);
+        });
+    }
+
+    function syncEditorScrollToPreview(e) {
+        if (!STATE.syncScroll) return;
+        let target = e.target;
+        while (target && target !== DOM.previewContent) {
+            if (target.hasAttribute && target.hasAttribute('data-source-line')) break;
+            target = target.parentElement;
+        }
+        if (!target || !target.hasAttribute || !target.hasAttribute('data-source-line')) {
+            const rect = preview.getBoundingClientRect();
+            const clickY = e.clientY - rect.top + preview.scrollTop;
+            const tagged = DOM.previewContent.querySelectorAll('[data-source-line]');
+            let best = null, bestDist = Infinity;
+            for (const el of tagged) {
+                const dist = Math.abs(el.offsetTop - clickY);
+                if (dist < bestDist) { best = el; bestDist = dist; }
+            }
+            target = best;
+        }
+        if (!target || !target.getAttribute) return;
+        const sourceLine = parseInt(target.getAttribute('data-source-line'), 10);
+        if (isNaN(sourceLine)) return;
+        _syncScrollLock = true;
+        cancelAnimationFrame(_syncScrollRAF);
+        _syncScrollRAF = requestAnimationFrame(() => {
+            const lines = editor.value.split('\n');
+            const lineH = editor.scrollHeight / Math.max(1, lines.length);
+            editor.scrollTop = Math.max(0, sourceLine * lineH - editor.clientHeight * 0.3);
+            setTimeout(() => { _syncScrollLock = false; }, 60);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  BIDIRECTIONAL SELECTION MIRRORING
+    //  Select text in one panel → highlight same text in the other.
+    //  Highlights persist until user clicks elsewhere or presses Escape.
+    // ═══════════════════════════════════════════════════════════════════
+
+    // --- Clear all <mark class="sync-selection"> from preview ---
+    function clearPreviewHighlights() {
+        const marks = DOM.previewContent.querySelectorAll('mark.sync-selection');
+        marks.forEach(mark => {
+            const parent = mark.parentNode;
+            while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+            parent.removeChild(mark);
+            parent.normalize();
+        });
+    }
+
+    // --- Strip markdown syntax for plain-text matching ---
+    function stripMarkdown(text) {
+        return text
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/\*\*/g, '').replace(/\*/g, '')
+            .replace(/~~/g, '').replace(/`/g, '')
+            .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+            .replace(/^\s*[-*+]\s+/gm, '')
+            .replace(/^\s*\d+\.\s+/gm, '')
+            .replace(/^\s*>\s*/gm, '');
+    }
+
+    // --- Find and highlight text inside preview DOM ---
+    function highlightTextInPreview(searchText) {
+        if (!searchText || searchText.length < 1) return false;
+
+        const walker = document.createTreeWalker(
+            DOM.previewContent, NodeFilter.SHOW_TEXT, null
+        );
+        const matchRanges = [];
+        const searchLower = searchText.toLowerCase();
+        let node;
+
+        // Single-node matches
+        while ((node = walker.nextNode())) {
+            const nodeLower = node.textContent.toLowerCase();
+            let startIdx = nodeLower.indexOf(searchLower);
+            while (startIdx !== -1) {
+                const range = document.createRange();
+                range.setStart(node, startIdx);
+                range.setEnd(node, startIdx + searchText.length);
+                matchRanges.push(range);
+                startIdx = nodeLower.indexOf(searchLower, startIdx + 1);
+            }
+        }
+
+        // Cross-node match fallback
+        if (matchRanges.length === 0) {
+            const fullText = (DOM.previewContent.textContent || '').toLowerCase();
+            const idx = fullText.indexOf(searchLower);
+            if (idx >= 0) {
+                const walker2 = document.createTreeWalker(
+                    DOM.previewContent, NodeFilter.SHOW_TEXT, null
+                );
+                let charCount = 0, startNode = null, startOff = 0, endNode = null, endOff = 0, n;
+                while ((n = walker2.nextNode())) {
+                    const len = n.textContent.length;
+                    if (!startNode && charCount + len > idx) {
+                        startNode = n; startOff = idx - charCount;
+                    }
+                    if (charCount + len >= idx + searchText.length) {
+                        endNode = n; endOff = idx + searchText.length - charCount;
+                        break;
+                    }
+                    charCount += len;
+                }
+                if (startNode && endNode) {
+                    try {
+                        const range = document.createRange();
+                        range.setStart(startNode, startOff);
+                        range.setEnd(endNode, endOff);
+                        matchRanges.push(range);
+                    } catch (e) { /* skip */ }
+                }
+            }
+        }
+
+        // Wrap matches with <mark class="sync-selection"> (reverse order)
+        for (let i = matchRanges.length - 1; i >= 0; i--) {
+            try {
+                const mark = document.createElement('mark');
+                mark.className = 'sync-selection';
+                matchRanges[i].surroundContents(mark);
+            } catch (e) {
+                try {
+                    const mark = document.createElement('mark');
+                    mark.className = 'sync-selection';
+                    const frag = matchRanges[i].extractContents();
+                    mark.appendChild(frag);
+                    matchRanges[i].insertNode(mark);
+                } catch (e2) { /* skip */ }
+            }
+        }
+        return matchRanges.length > 0;
+    }
+
+    // --- Find text in editor and set selection range ---
+    function selectTextInEditor(searchText) {
+        if (!searchText || searchText.length < 1) return;
+        const val = editor.value;
+        let idx = val.indexOf(searchText);
+        if (idx === -1) idx = val.toLowerCase().indexOf(searchText.toLowerCase());
+
+        // Fallback: search stripped lines
+        if (idx === -1) {
+            const lines = val.split('\n');
+            const searchLower = searchText.toLowerCase();
+            let charPos = 0;
+            for (let i = 0; i < lines.length; i++) {
+                const stripped = stripMarkdown(lines[i]).toLowerCase();
+                const mIdx = stripped.indexOf(searchLower);
+                if (mIdx !== -1) {
+                    const origIdx = lines[i].toLowerCase().indexOf(
+                        searchLower.substring(0, Math.min(searchLower.length, 15))
+                    );
+                    idx = charPos + (origIdx !== -1 ? origIdx : mIdx);
+                    break;
+                }
+                charPos += lines[i].length + 1;
+            }
+        }
+
+        if (idx !== -1) {
+            editor.setSelectionRange(idx, idx + searchText.length);
+            // Scroll to selection
+            const lineNum = val.substring(0, idx).split('\n').length - 1;
+            const lines = val.split('\n');
+            const lineH = editor.scrollHeight / Math.max(1, lines.length);
+            editor.scrollTop = Math.max(0, lineNum * lineH - editor.clientHeight * 0.3);
+        }
+    }
+
+    // --- Editor → Preview: mirror text selection ---
+    let _selMirrorTimer = null;
+
+    function onEditorSelection() {
+        if (!STATE.syncScroll) return;
+        clearTimeout(_selMirrorTimer);
+        _selMirrorTimer = setTimeout(() => {
+            clearPreviewHighlights();
+
+            const selStart = editor.selectionStart;
+            const selEnd = editor.selectionEnd;
+
+            if (selStart === selEnd) {
+                // No selection, just scroll-sync
+                syncPreviewScrollToEditor();
+                return;
+            }
+
+            const selectedText = editor.value.substring(selStart, selEnd);
+            if (!selectedText.trim()) return;
+
+            // Strip markdown syntax and search in preview
+            const plainText = stripMarkdown(selectedText).trim();
+            if (!plainText) return;
+
+            highlightTextInPreview(plainText);
+            syncPreviewScrollToEditor();
+        }, 80);
+    }
+
+    editor.addEventListener('mouseup', onEditorSelection);
+    editor.addEventListener('keyup', (e) => {
+        if (e.shiftKey || ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',
+            'Home','End','PageUp','PageDown'].includes(e.key)) {
+            onEditorSelection();
+        }
+    });
+    editor.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+            setTimeout(onEditorSelection, 50);
+        }
+    });
+
+    // --- Preview → Editor: mirror text selection ---
+    function onPreviewSelection() {
+        if (!STATE.syncScroll) return;
+        clearTimeout(_selMirrorTimer);
+        _selMirrorTimer = setTimeout(() => {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+
+            const range = sel.getRangeAt(0);
+            if (!DOM.previewContent.contains(range.commonAncestorContainer)) return;
+
+            const selectedText = sel.toString().trim();
+            if (!selectedText) return;
+
+            selectTextInEditor(selectedText);
+        }, 80);
+    }
+
+    preview.addEventListener('mouseup', onPreviewSelection);
+
+    // --- Clear highlights on plain click / Escape ---
+    editor.addEventListener('mousedown', () => {
+        setTimeout(() => {
+            if (editor.selectionStart === editor.selectionEnd) {
+                clearPreviewHighlights();
+            }
+        }, 10);
+    });
+
+    preview.addEventListener('mousedown', () => {
+        clearPreviewHighlights();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            clearPreviewHighlights();
+            if (document.activeElement === editor) {
+                const pos = editor.selectionEnd;
+                editor.setSelectionRange(pos, pos);
+            }
+        }
+    });
+
+    // --- Preview click scroll-sync (only when no text selected) ---
+    preview.addEventListener('click', (e) => {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+            syncEditorScrollToPreview(e);
+        }
+    });
 }
+
+
+
 
 function debouncePreview() {
     clearTimeout(previewTimer);
@@ -630,8 +939,69 @@ function updatePreview() {
                 hljs.highlightElement(block);
             });
         }
+        // 4. Tag preview elements with source line numbers for sync-scroll
+        _tagPreviewWithSourceLines();
     } catch (e) {
         DOM.previewContent.innerHTML = `<p style="color:red">Parse error: ${e.message}</p>`;
+    }
+}
+
+// ─── SOURCE-LINE TAGGING ─────────────────────────────────────────────────────
+// After rendering, tag each top-level block element in the preview with
+// data-source-line so the sync scroll can map clicks precisely.
+function _tagPreviewWithSourceLines() {
+    const mdText = STATE.markdown;
+    if (!mdText) return;
+
+    const mdLines = mdText.split('\n');
+    const children = DOM.previewContent.children;
+
+    // Build an array of { lineIndex, text } for non-blank markdown lines
+    // to match against rendered blocks.
+    let nextSearchLine = 0;
+
+    for (let i = 0; i < children.length; i++) {
+        const el = children[i];
+        // Get the first few words of the rendered element's text
+        const elText = (el.textContent || '').trim();
+        if (!elText) continue;
+
+        // Extract a short snippet to search for in the source
+        const snippet = elText.substring(0, 60).replace(/\s+/g, ' ').trim();
+        if (!snippet) continue;
+
+        // Search forward from nextSearchLine for a line containing this snippet
+        let found = -1;
+        for (let j = nextSearchLine; j < mdLines.length; j++) {
+            // Strip markdown syntax characters for comparison
+            const rawLine = mdLines[j]
+                .replace(/^#{1,6}\s+/, '')  // headings
+                .replace(/^\s*[-*+]\s+/, '') // list items
+                .replace(/^\s*\d+\.\s+/, '') // ordered list
+                .replace(/^\s*>\s*/, '')     // blockquote
+                .replace(/\*\*/g, '')        // bold
+                .replace(/\*/g, '')          // italic
+                .replace(/~~/g, '')          // strikethrough
+                .replace(/`/g, '')           // inline code
+                .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links
+                .trim();
+
+            if (!rawLine) continue;
+
+            // Check if the snippet starts with the raw line or vice versa
+            const snippetLower = snippet.toLowerCase();
+            const rawLower = rawLine.toLowerCase();
+            if (snippetLower.startsWith(rawLower.substring(0, 30)) ||
+                rawLower.startsWith(snippetLower.substring(0, 30))) {
+                found = j;
+                nextSearchLine = j + 1;
+                break;
+            }
+        }
+
+        if (found >= 0) {
+            el.setAttribute('data-source-line', found);
+        }
     }
 }
 
