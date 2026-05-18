@@ -14,6 +14,10 @@
     <!-- Highlight.js theme (default: github) -->
     <link rel="stylesheet" id="hljs-theme"
         href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    
+    <!-- PWA Manifest & Theme Color -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ffffff">
 </head>
 
 <body>
@@ -507,7 +511,22 @@ This is **bold** and *italic* text.
         // html2canvas CORS fix
         window.html2canvas = html2canvas;
     </script>
+    
+    <!-- DOMPurify for XSS prevention -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.9/purify.min.js"></script>
+
     <script src="js/app.js"></script>
+
+    <!-- Service Worker Registration for PWA -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => {
+                    console.error('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
 </body>
 
 </html>

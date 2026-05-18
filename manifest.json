@@ -1,0 +1,21 @@
+{
+  "name": "MDConvert",
+  "short_name": "MDConvert",
+  "description": "Convert Markdown to beautifully formatted PDF, DOC, and HTML documents.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f1f5f9",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "css/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "css/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

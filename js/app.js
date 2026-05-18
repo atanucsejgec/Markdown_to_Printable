@@ -930,6 +930,12 @@ function updatePreview() {
         const protected_md = protectMath(md);
         // 2. Parse markdown (math is safe as placeholders)
         let html = marked.parse(protected_md);
+        
+        // Sanitize parsed HTML to prevent XSS (protects against malicious markdown)
+        if (typeof DOMPurify !== 'undefined') {
+            html = DOMPurify.sanitize(html);
+        }
+        
         // 3. Restore math: replace placeholders with KaTeX-rendered output
         html = restoreMath(html);
         DOM.previewContent.innerHTML = html;
@@ -1275,7 +1281,10 @@ function buildPrintHTML() {
     const lGap = s.zeroSpace ? 0 : s.listGap;
 
     const protectedMd = protectMath(STATE.markdown || '');
-    const htmlContent = marked.parse(protectedMd);
+    let htmlContent = marked.parse(protectedMd);
+    if (typeof DOMPurify !== 'undefined') {
+        htmlContent = DOMPurify.sanitize(htmlContent);
+    }
     const renderedContent = restoreMath(htmlContent);
 
     // Collect KaTeX CSS for self-contained export
@@ -1409,6 +1418,17 @@ em { font-style: italic; }
 </html>`;
 }
 
+// ─── GET DYNAMIC FILENAME ────────────────────────────────────────────────────
+function getExportFilename(extension) {
+    const match = STATE.markdown.match(/^#\s+(.+)$/m);
+    if (match && match[1]) {
+        let name = match[1].trim().replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_');
+        if (name.length > 50) name = name.substring(0, 50);
+        return name + '.' + extension;
+    }
+    return 'document.' + extension;
+}
+
 // ─── DOWNLOAD HANDLER ────────────────────────────────────────────────────────
 async function handleDownload() {
     if (!STATE.markdown.trim()) {
@@ -1463,7 +1483,10 @@ async function downloadPDF() {
 
         // ── STEP 1: Render markdown to HTML with math ──
         const protectedMd = protectMath(STATE.markdown);
-        const htmlContent = marked.parse(protectedMd);
+        let htmlContent = marked.parse(protectedMd);
+        if (typeof DOMPurify !== 'undefined') {
+            htmlContent = DOMPurify.sanitize(htmlContent);
+        }
         const renderedHTML = restoreMath(htmlContent);
 
         // ── STEP 2: Build complete HTML for the iframe ──
@@ -1720,7 +1743,7 @@ ${s.columns > 1 ? `.col-wrap { column-count: ${s.columns}; column-gap: 8mm; } .c
         updateProgress(100, 'Done!');
         await new Promise(r => setTimeout(r, 150));
 
-        pdf.save('document.pdf');
+        pdf.save(getExportFilename('pdf'));
         hideProgress();
         showToast('PDF downloaded!', 'success');
 
@@ -1895,7 +1918,7 @@ function downloadDOC() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'document.doc';
+        link.download = getExportFilename('doc');
         link.click();
         URL.revokeObjectURL(url);
 
@@ -1918,7 +1941,7 @@ function downloadHTML() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'document.html';
+        link.download = getExportFilename('html');
         link.click();
         URL.revokeObjectURL(url);
 
